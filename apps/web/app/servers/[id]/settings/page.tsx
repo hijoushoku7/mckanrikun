@@ -6,6 +6,8 @@ import { useParams } from "next/navigation";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Sidebar } from "@/components/Sidebar";
 import { toast } from "@/components/Toast";
+import { StatusBadge } from "@/components/StatusBadge";
+import { Spinner } from "@/components/Spinner";
 import { useAuth } from "@/lib/auth-context";
 import {
   ApiError,
@@ -16,61 +18,7 @@ import {
   getServerFtp,
   updateServer,
 } from "@/lib/api";
-import type { Server, ServerStatus, PropertyField, FtpInfo } from "@/lib/types";
-
-// ──────────────────────────────────────────────
-// Helpers
-// ──────────────────────────────────────────────
-
-function statusColor(s: ServerStatus): string {
-  switch (s) {
-    case "running":
-      return "var(--color-success)";
-    case "starting":
-      return "var(--color-warning)";
-    case "error":
-      return "var(--color-danger)";
-    case "stopped":
-      return "var(--color-text-muted)";
-    default:
-      return "var(--color-border-muted)";
-  }
-}
-
-function statusBg(s: ServerStatus): string {
-  switch (s) {
-    case "running":
-      return "#1a3a20";
-    case "starting":
-      return "#3a2e10";
-    case "error":
-      return "#3a1a1a";
-    default:
-      return "var(--color-bg-elevated)";
-  }
-}
-
-function StatusBadge({ status }: { status: ServerStatus }) {
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        padding: "2px 8px",
-        fontSize: "11px",
-        fontFamily: "var(--font-mono)",
-        fontWeight: 600,
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        borderRadius: "4px",
-        backgroundColor: statusBg(status),
-        color: statusColor(status),
-        border: `1px solid ${statusColor(status)}`,
-      }}
-    >
-      {status}
-    </span>
-  );
-}
+import type { Server, PropertyField, FtpInfo } from "@/lib/types";
 
 // ──────────────────────────────────────────────
 // Style constants
@@ -649,7 +597,8 @@ function SettingsContent() {
             }}
           >
             {serverLoading ? (
-              <span style={{ color: "var(--color-text-muted)" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "var(--color-text-muted)" }}>
+                <Spinner size={16} />
                 読み込み中…
               </span>
             ) : server ? (
@@ -717,11 +666,16 @@ function SettingsContent() {
           style={{
             padding: "48px",
             textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "12px",
             color: "var(--color-text-secondary)",
             fontSize: "13px",
             fontFamily: "var(--font-mono)",
           }}
         >
+          <Spinner size={24} />
           設定を読み込み中…
         </div>
       ) : notReady ? (
@@ -802,16 +756,36 @@ function SettingsContent() {
       ) : propsError ? (
         <div
           style={{
-            padding: "16px",
+            padding: "24px",
             backgroundColor: "#3a1a1a",
             border: "1px solid var(--color-danger)",
             borderRadius: "6px",
             fontSize: "13px",
             fontFamily: "var(--font-mono)",
             color: "var(--color-danger)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
           }}
         >
-          {propsError}
+          <span>{propsError}</span>
+          <div>
+            <button
+              onClick={() => void fetchProperties()}
+              style={{
+                padding: "6px 16px",
+                fontSize: "12px",
+                fontFamily: "var(--font-mono)",
+                backgroundColor: "transparent",
+                border: "1px solid var(--color-danger)",
+                borderRadius: "4px",
+                color: "var(--color-danger)",
+                cursor: "pointer",
+              }}
+            >
+              再試行
+            </button>
+          </div>
         </div>
       ) : (
         /* Main form */
@@ -1180,9 +1154,13 @@ function SettingsContent() {
               fontSize: "13px",
               fontFamily: "var(--font-mono)",
               color: "var(--color-text-muted)",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
             }}
           >
-            Loading…
+            <Spinner size={14} />
+            読み込み中…
           </div>
         ) : !ftpInfo ? (
           <div

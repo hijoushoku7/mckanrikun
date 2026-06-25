@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Sidebar } from "@/components/Sidebar";
 import { toast } from "@/components/Toast";
+import { Spinner } from "@/components/Spinner";
 import { ApiError, getFtpInfo } from "@/lib/api";
 import type { FtpInfo } from "@/lib/types";
 
@@ -70,19 +71,27 @@ export default function FtpPage() {
 function FtpContent() {
   const [ftp, setFtp] = useState<FtpInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchFtp = useCallback(() => {
+    setLoading(true);
+    setFetchError(null);
     getFtpInfo()
       .then((data) => setFtp(data))
       .catch((err) => {
-        if (err instanceof ApiError) {
-          toast(`FTP 情報の取得に失敗しました: ${err.message}`, "error");
-        } else {
-          toast("FTP 情報の取得に失敗しました。", "error");
-        }
+        const msg =
+          err instanceof ApiError
+            ? `FTP 情報の取得に失敗しました: ${err.message}`
+            : "FTP 情報の取得に失敗しました。";
+        setFetchError(msg);
+        toast(msg, "error");
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchFtp();
+  }, [fetchFtp]);
 
   return (
     <div style={{ maxWidth: "640px" }}>
@@ -137,12 +146,51 @@ function FtpContent() {
           style={{
             padding: "48px",
             textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "12px",
             color: "var(--color-text-secondary)",
             fontSize: "13px",
             fontFamily: "var(--font-mono)",
           }}
         >
-          Loading…
+          <Spinner size={24} />
+          読み込み中…
+        </div>
+      ) : fetchError ? (
+        <div
+          style={{
+            padding: "24px",
+            backgroundColor: "#3a1a1a",
+            border: "1px solid var(--color-danger)",
+            borderRadius: "6px",
+            fontSize: "13px",
+            fontFamily: "var(--font-mono)",
+            color: "var(--color-danger)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+          }}
+        >
+          <span>{fetchError}</span>
+          <div>
+            <button
+              onClick={fetchFtp}
+              style={{
+                padding: "6px 16px",
+                fontSize: "12px",
+                fontFamily: "var(--font-mono)",
+                backgroundColor: "transparent",
+                border: "1px solid var(--color-danger)",
+                borderRadius: "4px",
+                color: "var(--color-danger)",
+                cursor: "pointer",
+              }}
+            >
+              再試行
+            </button>
+          </div>
         </div>
       ) : ftp ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>

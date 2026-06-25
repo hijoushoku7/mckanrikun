@@ -4,81 +4,44 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "@/components/Toast";
+import { StatusBadge } from "@/components/StatusBadge";
+import { Spinner } from "@/components/Spinner";
 import {
   ApiError,
   listServers,
   controlServer,
   deleteServer,
 } from "@/lib/api";
-import type { Server, ServerStatus } from "@/lib/types";
+import type { Server } from "@/lib/types";
 
 // ──────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────
 
-function statusColor(s: ServerStatus): string {
-  switch (s) {
-    case "running":
-      return "var(--color-success)";
-    case "starting":
-      return "var(--color-warning)";
-    case "error":
-      return "var(--color-danger)";
-    case "stopped":
-      return "var(--color-text-muted)";
-    default:
-      return "var(--color-border-muted)";
-  }
+function formatTime(d: Date): string {
+  return d.toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 }
 
-function statusBg(s: ServerStatus): string {
-  switch (s) {
-    case "running":
-      return "#1a3a20";
-    case "starting":
-      return "#3a2e10";
-    case "error":
-      return "#3a1a1a";
-    case "stopped":
-      return "var(--color-bg-elevated)";
-    default:
-      return "var(--color-bg-elevated)";
-  }
-}
-
-function StatusBadge({ status }: { status: ServerStatus }) {
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        padding: "2px 8px",
-        fontSize: "11px",
-        fontFamily: "var(--font-mono)",
-        fontWeight: 600,
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        borderRadius: "4px",
-        backgroundColor: statusBg(status),
-        color: statusColor(status),
-        border: `1px solid ${statusColor(status)}`,
-      }}
-    >
-      {status}
-    </span>
-  );
-}
-
-const selectStyle: React.CSSProperties = {
-  padding: "8px 10px",
-  fontSize: "13px",
+const actionBtnStyle = (
+  color: string,
+  disabled: boolean
+): React.CSSProperties => ({
+  padding: "4px 10px",
+  fontSize: "12px",
   fontFamily: "var(--font-mono)",
-  backgroundColor: "var(--color-bg-base)",
-  border: "1px solid var(--color-border-muted)",
+  backgroundColor: "transparent",
+  border: `1px solid ${disabled ? "var(--color-border-muted)" : color}`,
   borderRadius: "4px",
-  color: "var(--color-text-primary)",
-  outline: "none",
-  cursor: "pointer",
-};
+  color: disabled ? "var(--color-text-muted)" : color,
+  cursor: disabled ? "not-allowed" : "pointer",
+  transition: "opacity 0.15s",
+  opacity: disabled ? 0.5 : 1,
+  whiteSpace: "nowrap" as const,
+});
 
 // ──────────────────────────────────────────────
 // Page
@@ -91,16 +54,35 @@ export default function DashboardPage() {
 
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
+  // 初回ロード済みかを ref で追跡(useCallback の依存に loading を入れず済む)
+  const initialLoadDone = useRef(false);
 
-  const fetchServers = useCallback(async () => {
+  const fetchServers = useCallback(async (manual = false) => {
+    if (manual) setRefreshing(true);
+    setFetchError(null);
     try {
       const data = await listServers();
       setServers(data);
-    } catch {
-      toast("サーバー一覧の取得に失敗しました。", "error");
+      setLastUpdated(new Date());
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? `サーバー一覧の取得に失敗しました: ${err.message}`
+          : "サーバー一覧の取得に失敗しました。";
+      // 初回ロードが終わっていない場合はインライン表示、以降はトースト
+      if (!initialLoadDone.current) {
+        setFetchError(msg);
+      } else {
+        toast(msg, "error");
+      }
     } finally {
       setLoading(false);
+      initialLoadDone.current = true;
+      if (manual) setRefreshing(false);
     }
   }, []);
 
@@ -109,7 +91,7 @@ export default function DashboardPage() {
     void fetchServers();
   }, [fetchServers]);
 
-  // Polling every 10 s
+  // Polling every 10 s (silent — errors go to toast, not blocking)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     pollRef.current = setInterval(() => {
@@ -168,23 +150,6 @@ export default function DashboardPage() {
     }
   }
 
-  const actionBtnStyle = (
-    color: string,
-    disabled: boolean
-  ): React.CSSProperties => ({
-    padding: "4px 10px",
-    fontSize: "12px",
-    fontFamily: "var(--font-mono)",
-    backgroundColor: "transparent",
-    border: `1px solid ${disabled ? "var(--color-border-muted)" : color}`,
-    borderRadius: "4px",
-    color: disabled ? "var(--color-text-muted)" : color,
-    cursor: disabled ? "not-allowed" : "pointer",
-    transition: "opacity 0.15s",
-    opacity: disabled ? 0.5 : 1,
-    whiteSpace: "nowrap" as const,
-  });
-
   return (
     <div>
       {/* Page header */}
@@ -222,8 +187,26 @@ export default function DashboardPage() {
           </p>
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          {/* 最終更新時刻 + 更新中インジケータ */}
+          {lastUpdated && (
+            <span
+              style={{
+                fontSize: "11px",
+                fontFamily: "var(--font-mono)",
+                color: "var(--color-text-muted)",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              {refreshing && <Spinner size={12} />}
+              更新 {formatTime(lastUpdated)}
+            </span>
+          )}
           <button
-            onClick={() => void fetchServers()}
+            onClick={() => void fetchServers(true)}
+            disabled={refreshing || loading}
+            aria-label="サーバー一覧を更新"
             style={{
               padding: "7px 14px",
               fontSize: "12px",
@@ -231,19 +214,28 @@ export default function DashboardPage() {
               backgroundColor: "transparent",
               border: "1px solid var(--color-border-muted)",
               borderRadius: "4px",
-              color: "var(--color-text-secondary)",
-              cursor: "pointer",
-              transition: "border-color 0.15s, color 0.15s",
+              color: refreshing || loading ? "var(--color-text-muted)" : "var(--color-text-secondary)",
+              cursor: refreshing || loading ? "not-allowed" : "pointer",
+              opacity: refreshing || loading ? 0.6 : 1,
+              transition: "border-color 0.15s, color 0.15s, opacity 0.15s",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "var(--color-accent)";
-              e.currentTarget.style.color = "var(--color-accent)";
+              if (!refreshing && !loading) {
+                e.currentTarget.style.borderColor = "var(--color-accent)";
+                e.currentTarget.style.color = "var(--color-accent)";
+              }
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = "var(--color-border-muted)";
-              e.currentTarget.style.color = "var(--color-text-secondary)";
+              e.currentTarget.style.color = refreshing || loading
+                ? "var(--color-text-muted)"
+                : "var(--color-text-secondary)";
             }}
           >
+            {refreshing && <Spinner size={12} />}
             更新
           </button>
           {canOperate && (
@@ -322,12 +314,56 @@ export default function DashboardPage() {
             style={{
               padding: "48px",
               textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "12px",
               color: "var(--color-text-secondary)",
               fontSize: "13px",
               fontFamily: "var(--font-mono)",
             }}
           >
-            Loading…
+            <Spinner size={24} />
+            <span>読み込み中…</span>
+          </div>
+        ) : fetchError ? (
+          /* 初回取得失敗 */
+          <div
+            style={{
+              padding: "40px 32px",
+              textAlign: "center",
+            }}
+          >
+            <p
+              style={{
+                margin: "0 0 16px",
+                fontSize: "13px",
+                fontFamily: "var(--font-mono)",
+                color: "var(--color-danger)",
+              }}
+            >
+              {fetchError}
+            </p>
+            <button
+              onClick={() => {
+                setFetchError(null);
+                initialLoadDone.current = false;
+                setLoading(true);
+                void fetchServers();
+              }}
+              style={{
+                padding: "7px 18px",
+                fontSize: "12px",
+                fontFamily: "var(--font-mono)",
+                backgroundColor: "transparent",
+                border: "1px solid var(--color-danger)",
+                borderRadius: "4px",
+                color: "var(--color-danger)",
+                cursor: "pointer",
+              }}
+            >
+              再試行
+            </button>
           </div>
         ) : servers.length === 0 ? (
           <div
@@ -423,7 +459,7 @@ export default function DashboardPage() {
                         transition: "opacity 0.15s",
                       }}
                     >
-                      {/* Name (コンソールへのリンク。全ロール閲覧可) */}
+                      {/* Name */}
                       <td
                         style={{
                           padding: "14px 16px",
@@ -432,16 +468,19 @@ export default function DashboardPage() {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        <Link
-                          href={`/servers/${server.id}/console`}
-                          style={{
-                            color: "var(--color-accent)",
-                            textDecoration: "none",
-                          }}
-                          title="コンソールを開く"
-                        >
-                          {server.name}
-                        </Link>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <Link
+                            href={`/servers/${server.id}/console`}
+                            style={{
+                              color: "var(--color-accent)",
+                              textDecoration: "none",
+                            }}
+                            title="コンソールを開く"
+                          >
+                            {server.name}
+                          </Link>
+                          {busy && <Spinner size={12} />}
+                        </div>
                       </td>
 
                       {/* Status badge */}
@@ -521,6 +560,7 @@ export default function DashboardPage() {
                             <button
                               disabled={busy || isRunning}
                               onClick={() => void handleControl(server.id, "start")}
+                              aria-label={`${server.name} を起動`}
                               style={actionBtnStyle(
                                 "var(--color-success)",
                                 busy || isRunning
@@ -531,6 +571,7 @@ export default function DashboardPage() {
                             <button
                               disabled={busy || isStopped}
                               onClick={() => void handleControl(server.id, "stop")}
+                              aria-label={`${server.name} を停止`}
                               style={actionBtnStyle(
                                 "var(--color-warning)",
                                 busy || isStopped
@@ -543,6 +584,7 @@ export default function DashboardPage() {
                               onClick={() =>
                                 void handleControl(server.id, "restart")
                               }
+                              aria-label={`${server.name} を再起動`}
                               style={actionBtnStyle(
                                 "var(--color-accent)",
                                 busy || isStopped
@@ -581,6 +623,7 @@ export default function DashboardPage() {
                             <button
                               disabled={busy}
                               onClick={() => void handleDelete(server)}
+                              aria-label={`${server.name} を削除`}
                               style={actionBtnStyle(
                                 "var(--color-danger)",
                                 busy

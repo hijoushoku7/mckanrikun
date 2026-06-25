@@ -37,6 +37,10 @@ export function ToastContainer() {
 
   return (
     <div
+      aria-live="polite"
+      aria-atomic="false"
+      role="region"
+      aria-label="通知"
       style={{
         position: "fixed",
         bottom: "24px",
@@ -50,6 +54,7 @@ export function ToastContainer() {
       {toasts.map((t) => (
         <div
           key={t.id}
+          role={t.variant === "error" ? "alert" : undefined}
           style={{
             padding: "10px 16px",
             borderRadius: "6px",

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { Spinner } from "@/components/Spinner";
 import type { Role } from "@/lib/types";
 
 interface AuthGuardProps {
@@ -28,10 +29,21 @@ export function AuthGuard({ children, requiredRole }: AuthGuardProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-[var(--color-text-secondary)] font-mono text-sm">
-          Authenticating…
-        </div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100dvh",
+          gap: "12px",
+          color: "var(--color-text-secondary)",
+          fontFamily: "var(--font-mono)",
+          fontSize: "13px",
+        }}
+      >
+        <Spinner size={24} />
+        <span>認証中…</span>
       </div>
     );
   }
@@ -40,13 +52,27 @@ export function AuthGuard({ children, requiredRole }: AuthGuardProps) {
 
   if (requiredRole && user.role !== requiredRole) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-[var(--color-danger)] font-mono text-sm mb-2">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100dvh",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <p
+            style={{
+              color: "var(--color-danger)",
+              fontFamily: "var(--font-mono)",
+              fontSize: "13px",
+              marginBottom: "8px",
+            }}
+          >
             403 Forbidden
           </p>
-          <p className="text-[var(--color-text-secondary)] text-sm">
-            This page requires {requiredRole} access.
+          <p style={{ color: "var(--color-text-secondary)", fontSize: "13px" }}>
+            このページは {requiredRole} 以上のロールが必要です。
           </p>
         </div>
       </div>

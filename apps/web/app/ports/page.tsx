@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Sidebar } from "@/components/Sidebar";
 import { toast } from "@/components/Toast";
+import { Spinner } from "@/components/Spinner";
 import { ApiError, listPorts, listServers } from "@/lib/api";
 import type { PortAllocation, Server } from "@/lib/types";
 
@@ -247,12 +248,17 @@ function PortsContent() {
             style={{
               padding: "48px",
               textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "12px",
               color: "var(--color-text-secondary)",
               fontSize: "13px",
               fontFamily: "var(--font-mono)",
             }}
           >
-            Loading…
+            <Spinner size={24} />
+            読み込み中…
           </div>
         ) : allocations.length === 0 ? (
           <div
