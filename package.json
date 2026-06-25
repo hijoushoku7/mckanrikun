@@ -1,0 +1,32 @@
+{
+  "name": "mckanrikun",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ローカルネットワーク向け Minecraft サーバー管理 Web アプリ",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace apps/api",
+    "dev:web": "npm run dev --workspace apps/web",
+    "build": "npm run build --workspaces --if-present",
+    "db:generate": "npm run db:generate --workspace apps/api",
+    "db:migrate": "npm run db:migrate --workspace apps/api",
+    "db:seed": "npm run db:seed --workspace apps/api"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.0"
+    }
+  },
+  "allowScripts": {
+    "argon2@0.44.0": true,
+    "better-sqlite3@12.11.1": true,
+    "esbuild@0.18.20": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.1": true
+  }
+}
