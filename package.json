@@ -20,7 +20,8 @@
   "overrides": {
     "@esbuild-kit/core-utils": {
       "esbuild": "^0.25.0"
-    }
+    },
+    "postcss": "^8.5.10"
   },
   "allowScripts": {
     "argon2@0.44.0": true,
