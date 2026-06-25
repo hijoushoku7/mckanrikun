@@ -6,9 +6,11 @@ import { useParams } from "next/navigation";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Sidebar } from "@/components/Sidebar";
 import { toast } from "@/components/Toast";
+import { StatusBadge } from "@/components/StatusBadge";
+import { Spinner } from "@/components/Spinner";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError, getServer, sendConsoleCommand, WS_BASE } from "@/lib/api";
-import type { Server, ServerStatus } from "@/lib/types";
+import type { Server } from "@/lib/types";
 
 // ──────────────────────────────────────────────
 // Constants
@@ -19,56 +21,6 @@ const MAX_LOG_LINES = 2000;
 // ──────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────
-
-function statusColor(s: ServerStatus): string {
-  switch (s) {
-    case "running":
-      return "var(--color-success)";
-    case "starting":
-      return "var(--color-warning)";
-    case "error":
-      return "var(--color-danger)";
-    case "stopped":
-      return "var(--color-text-muted)";
-    default:
-      return "var(--color-border-muted)";
-  }
-}
-
-function statusBg(s: ServerStatus): string {
-  switch (s) {
-    case "running":
-      return "#1a3a20";
-    case "starting":
-      return "#3a2e10";
-    case "error":
-      return "#3a1a1a";
-    default:
-      return "var(--color-bg-elevated)";
-  }
-}
-
-function StatusBadge({ status }: { status: ServerStatus }) {
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        padding: "2px 8px",
-        fontSize: "11px",
-        fontFamily: "var(--font-mono)",
-        fontWeight: 600,
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        borderRadius: "4px",
-        backgroundColor: statusBg(status),
-        color: statusColor(status),
-        border: `1px solid ${statusColor(status)}`,
-      }}
-    >
-      {status}
-    </span>
-  );
-}
 
 type WsState = "connecting" | "connected" | "disconnected" | "error";
 
@@ -325,7 +277,7 @@ function ConsoleContent() {
           : "var(--color-danger)";
     const label =
       wsState === "connected"
-        ? "接続中"
+        ? "接続済み"
         : wsState === "connecting"
           ? "接続中…"
           : "切断";
@@ -339,16 +291,22 @@ function ConsoleContent() {
           fontFamily: "var(--font-mono)",
           color,
         }}
+        aria-live="polite"
+        aria-label={`WebSocket: ${label}`}
       >
-        <span
-          style={{
-            display: "inline-block",
-            width: "7px",
-            height: "7px",
-            borderRadius: "50%",
-            backgroundColor: color,
-          }}
-        />
+        {wsState === "connecting" ? (
+          <Spinner size={10} />
+        ) : (
+          <span
+            style={{
+              display: "inline-block",
+              width: "7px",
+              height: "7px",
+              borderRadius: "50%",
+              backgroundColor: color,
+            }}
+          />
+        )}
         {label}
       </span>
     );
@@ -435,7 +393,10 @@ function ConsoleContent() {
             }}
           >
             {serverLoading ? (
-              <span style={{ color: "var(--color-text-muted)" }}>読み込み中…</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "var(--color-text-muted)" }}>
+                <Spinner size={16} />
+                読み込み中…
+              </span>
             ) : server ? (
               <>
                 <span>{server.name}</span>
@@ -558,8 +519,12 @@ function ConsoleContent() {
               style={{
                 color: "#484f58",
                 paddingTop: "8px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
               }}
             >
+              {wsState === "connecting" && <Spinner size={12} />}
               {wsState === "connecting"
                 ? "WebSocket 接続中…"
                 : "ログがありません。"}

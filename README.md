@@ -32,7 +32,38 @@ npm run dev:web    # http://localhost:3000
 ```
 
 `apps/web/.env.example` を `apps/web/.env.local` にコピーし、API のオリジンを設定する
-(既定 `http://localhost:8080`)。
+(既定 `http://localhost:8080`)。Docker デーモンへアクセスできるユーザーで API を起動すること
+(`/var/run/docker.sock`)。
+
+## 本番デプロイ(docker compose 一式)
+
+Ubuntu Server 単一ホストでの本番運用は同梱の `docker-compose.yml`(api / web / ftp)を使う。
+
+```bash
+cp .env.example .env      # 各値を環境に合わせて編集(下表)
+docker compose up -d --build
+```
+
+api コンテナは起動時に **マイグレーション適用 → 初期 admin の作成(冪等)** を自動で行う。
+admin は `.env` の `INITIAL_ADMIN_USER` / `INITIAL_ADMIN_PASSWORD` から作成され、既に存在すれば
+スキップする(`INITIAL_ADMIN_PASSWORD` 未設定時はランダム生成して `docker compose logs api`
+に出力)。手動で再作成する場合は `docker compose run --rm api node dist/db/seed.js`。
+
+| 変数 | 説明 |
+|---|---|
+| `SERVER_DATA_ROOT` | 各 MC サーバーの `/data` を置く**ホストの絶対パス**(必須)。api/ftp に同一パスでマウントされる。 |
+| `NEXT_PUBLIC_API_BASE` | ブラウザから到達する API URL(web のビルド時に埋め込み)。 |
+| `WEB_ORIGIN` | api の CORS 許可オリジン(= web の公開 URL)。 |
+| `COOKIE_SECURE` | TLS リバースプロキシ配下なら `true`。 |
+| `FTP_PASSWORD` / `FTP_PUBLISH_HOST` | FTP のパスワードと LAN クライアントから到達可能なホスト IP。 |
+| `INITIAL_ADMIN_PASSWORD` | 初期 admin パスワード(`db:seed` 用)。 |
+
+> **重要(バインド整合)**: api はコンテナ内で動くが、生成する MC コンテナのバインドマウントは
+> *ホストの* Docker デーモンが解釈する。そのため `SERVER_DATA_ROOT` は絶対パスとし、
+> api コンテナにも同一パスでマウントする(compose に設定済み)。
+
+> api コンテナは `/var/run/docker.sock` をマウントしてホスト上に MC コンテナを生成する。
+> ソケットへのアクセス権限に注意。
 
 ## 現在の実装状況
 
@@ -52,7 +83,23 @@ npm run dev:web    # http://localhost:3000
 - **Phase 6(FTP 連携 & リソース表示)**: FTP サーバー(pure-ftpd)を docker compose で定義、
   接続情報の表示(`/ftp`)、ポート使用状況一覧(`/ports`、FTP ポートも登録)、メモリ割当の編集反映
   (`PATCH /api/servers/:id`、コンテナ再作成)。
-- **Phase 7(仕上げ)**: ダッシュボード/エラーハンドリング/セットアップ手順の最終化。
+- **Phase 7(仕上げ)**: ダッシュボードの状態表示・エラーハンドリング/トースト/ローディングの最終化、
+  本番 docker compose 一式(api/web/ftp)+ Dockerfile、セットアップ手順整備。
+
+## 通し動作確認シナリオ(本番ホスト)
+
+Docker が利用可能な本番ホストで、4 ローダーそれぞれについて以下を確認する(要件 7-4):
+
+1. admin でログイン →「新規サーバー作成」。
+2. ローダー(Vanilla / Forge / NeoForge / Fabric)・MC バージョン・(必要なら)ローダーバージョンを選択。
+   Java タグが自動表示されることを確認。メモリ・ポートを指定、EULA に同意して作成。
+3. ダッシュボードでステータスが `starting`→`running` に遷移することを確認。
+4. サーバー名(コンソール)を開き、ログがリアルタイム表示され、`list` 等のコマンドが
+   RCON で実行できることを確認。
+5. 設定画面で `server.properties`(例: `motd`)を編集・保存(要再起動の明示を確認)。
+   メモリ割当を変更(コンテナ再作成)。
+6. FTP で `/<server-id>/mods` に jar を配置できることを確認(接続情報は `/ftp` 画面)。
+7. サーバーを停止 → 削除。`/ports` でポート使用状況が更新されることを確認。
 
 ## FTP(MOD 配置)
 

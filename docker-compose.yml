@@ -1,25 +1,80 @@
-# FTP サーバー(MOD 配置用)。各 MC サーバーの /data 群を共有マウントし、
-# /data/<server-id>/mods へ jar を直接配置できるようにする(要件 FR-7 / Phase 6-1)。
-# 注意: MC サーバーコンテナは管理アプリ(API)が Docker API 経由で動的生成するため、
-# この compose には含めない。ここでは静的サービス(FTP)のみを定義する。
+# Minecraft サーバー管理 Web アプリ — 本番デプロイ用 compose 一式(要件 §9 Phase 7-3)。
 #
-# 起動: docker compose up -d ftp
-# 接続情報は管理画面(FTP 連携)にも表示される。
+# 構成:
+#   - api : Hono BFF。Docker ソケットを介して MC コンテナを動的生成・管理する。
+#   - web : Next.js 管理 UI。
+#   - ftp : MOD 配置用 FTP(pure-ftpd)。各サーバーの /data 群を共有マウント。
+# MC サーバーコンテナは api が Docker API 経由で動的生成するため、この compose には含めない。
+#
+# 【重要】SERVER_DATA_ROOT は「ホストの絶対パス」を指定すること。
+#   api はコンテナ内で動くが、生成する MC コンテナのバインドマウントは
+#   *ホストの* Docker デーモンが解釈する。よって api コンテナ内の作業パスと
+#   ホストパスを一致させる必要があり、SERVER_DATA_ROOT を同一絶対パスで
+#   api コンテナにもマウントする(下記 identity マウント)。
+#
+# 必須環境変数(.env か環境で指定):
+#   SERVER_DATA_ROOT=/opt/mc/servers   # ホスト絶対パス
+#   FTP_PASSWORD=...                   # FTP パスワード
+#   FTP_PUBLISH_HOST=192.168.x.x       # LAN クライアントから到達可能なホスト IP
+#   NEXT_PUBLIC_API_BASE=http://192.168.x.x:8080  # ブラウザから見た API の URL
+#   INITIAL_ADMIN_PASSWORD=...         # 初回のみ。作成後は `docker compose run --rm api npm run db:seed`
+#
+# 起動: docker compose up -d --build
+
 services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: mc-manager-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8080}:8080"
+    environment:
+      PORT: "8080"
+      DB_PATH: "/data/db/app.db"
+      WEB_ORIGIN: "${WEB_ORIGIN:-http://localhost:3000}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+      DOCKER_SOCKET: "/var/run/docker.sock"
+      # MC コンテナのバインド整合のためホスト絶対パスをそのまま使う。
+      SERVER_DATA_ROOT: "${SERVER_DATA_ROOT:?SERVER_DATA_ROOT (host absolute path) must be set}"
+      FTP_PUBLISH_HOST: "${FTP_PUBLISH_HOST:-}"
+      FTP_PORT: "${FTP_PORT:-21}"
+      FTP_USER: "${FTP_USER:-mcadmin}"
+      INITIAL_ADMIN_USER: "${INITIAL_ADMIN_USER:-admin}"
+      INITIAL_ADMIN_PASSWORD: "${INITIAL_ADMIN_PASSWORD:-}"
+    volumes:
+      # ホストの Docker デーモンを操作(MC コンテナ生成)。
+      - /var/run/docker.sock:/var/run/docker.sock
+      # SQLite 永続化。
+      - mc-manager-db:/data/db
+      # identity マウント: ホストパス == コンテナ内パス(バインド整合のため)。
+      - "${SERVER_DATA_ROOT}:${SERVER_DATA_ROOT}"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # ブラウザから到達する API URL をビルド時に埋め込む(NEXT_PUBLIC_*)。
+        NEXT_PUBLIC_API_BASE: "${NEXT_PUBLIC_API_BASE:-http://localhost:8080}"
+    container_name: mc-manager-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      - api
+
   ftp:
     image: instrumentisto/pure-ftpd:latest
     container_name: mc-manager-ftp
     restart: unless-stopped
     ports:
-      # 制御ポート
       - "${FTP_PORT:-21}:21"
-      # パッシブモード用ポート範囲(クライアント互換のため必須)
       - "${FTP_PASSIVE_PORT_START:-30000}-${FTP_PASSIVE_PORT_END:-30009}:30000-30009"
     environment:
-      # publishhost には LAN 内クライアントから到達可能なホスト IP を設定する。
       FTP_USER_NAME: "${FTP_USER:-mcadmin}"
       FTP_USER_PASS: "${FTP_PASSWORD:?FTP_PASSWORD must be set}"
-      # コンテナ内のホームを /data に固定(全サーバーの /data 群をここへマウント)
       FTP_USER_HOME: "/data"
     command:
       - /usr/sbin/pure-ftpd
@@ -33,6 +88,8 @@ services:
       - -p
       - "30000:30009"
     volumes:
-      # 管理アプリの SERVER_DATA_ROOT(各サーバーの /data 群)を共有マウント。
-      # ホスト側パスは管理アプリの設定 (SERVER_DATA_ROOT) と一致させること。
-      - "${SERVER_DATA_ROOT:-./data/servers}:/data"
+      # api と同じ SERVER_DATA_ROOT を /data としてマウント(各サーバーの /data 群)。
+      - "${SERVER_DATA_ROOT:?SERVER_DATA_ROOT must be set}:/data"
+
+volumes:
+  mc-manager-db:
