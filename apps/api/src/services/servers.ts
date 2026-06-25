@@ -125,6 +125,69 @@ export const deleteServer = async (id: string): Promise<boolean> => {
   return true;
 };
 
+/** Server 行から itzg コンテナ生成用の入力を組み立てる。 */
+const inputFromRow = (row: Server): Parameters<typeof buildItzgSpec>[0] => ({
+  id: row.id,
+  name: row.name,
+  loaderType: row.loaderType,
+  mcVersion: row.mcVersion,
+  loaderVersion: row.loaderVersion,
+  javaTag: row.javaTag,
+  memoryMb: row.memoryMb,
+  gamePort: row.gamePort,
+  rconPort: row.rconPort,
+  rconPassword: row.rconPassword,
+});
+
+export interface UpdateServerInput {
+  name?: string;
+  memoryMb?: number;
+}
+
+/**
+ * サーバー設定の更新(要件 6-3: メモリ割当の編集反映)。
+ * - name の変更は DB のみ反映。
+ * - memoryMb の変更は、コンテナのメモリ上限と JVM 最大ヒープ(env)を反映するため
+ *   コンテナを再作成する(削除→新スペックで生成→起動)。/data はバインドのため保持。
+ * 再作成に失敗した場合は container_id を null・status を error にして例外を投げる。
+ */
+export const updateServer = async (
+  id: string,
+  input: UpdateServerInput,
+): Promise<Server | null> => {
+  const server = getServer(id);
+  if (!server) return null;
+
+  const patch: Partial<Server> = { updatedAt: new Date() };
+  if (input.name !== undefined) patch.name = input.name;
+
+  const memoryChanged =
+    input.memoryMb !== undefined && input.memoryMb !== server.memoryMb;
+  if (input.memoryMb !== undefined) patch.memoryMb = input.memoryMb;
+
+  // メモリ変更があり稼働コンテナがある場合は再作成して反映。
+  if (memoryChanged && server.containerId) {
+    const updatedRow: Server = { ...server, ...patch } as Server;
+    try {
+      await dockerService.remove(server.containerId, { force: true });
+      const spec = buildItzgSpec(inputFromRow(updatedRow));
+      const containerId = await dockerService.create(spec);
+      await dockerService.start(containerId);
+      patch.containerId = containerId;
+      patch.statusCache = "starting";
+    } catch (err) {
+      db.update(servers)
+        .set({ ...patch, containerId: null, statusCache: "error" })
+        .where(eq(servers.id, id))
+        .run();
+      throw err instanceof Error ? err : new Error("failed to apply memory");
+    }
+  }
+
+  db.update(servers).set(patch).where(eq(servers.id, id)).run();
+  return { ...server, ...patch };
+};
+
 export const getServer = (id: string): Server | undefined =>
   db.select().from(servers).where(eq(servers.id, id)).get();
 

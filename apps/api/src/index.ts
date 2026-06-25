@@ -5,11 +5,13 @@ import { config } from "./config.ts";
 import { startDockerReconciliation } from "./docker/bootstrap.ts";
 import type { AppEnv } from "./middleware/auth.ts";
 import { authRoutes } from "./routes/auth.ts";
+import { ftpRoutes } from "./routes/ftp.ts";
 import { metaRoutes } from "./routes/meta.ts";
 import { portRoutes } from "./routes/ports.ts";
 import { serverRoutes } from "./routes/servers.ts";
 import { userRoutes } from "./routes/users.ts";
 import { purgeExpiredSessions } from "./services/auth.ts";
+import { ensureFtpPortAllocation } from "./services/ftp.ts";
 import { setupLogsWebSocket } from "./ws/logs.ts";
 import type { Server as HttpServer } from "node:http";
 
@@ -30,6 +32,10 @@ app.route("/api/users", userRoutes);
 app.route("/api/servers", serverRoutes);
 app.route("/api/meta", metaRoutes);
 app.route("/api/ports", portRoutes);
+app.route("/api/ftp", ftpRoutes);
+
+// FTP ポートをポート使用状況一覧に冪等登録する。
+ensureFtpPortAllocation();
 
 // 起動時と定期的に期限切れセッションを掃除する。
 purgeExpiredSessions();
