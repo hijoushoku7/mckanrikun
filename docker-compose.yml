@@ -1,0 +1,38 @@
+# FTP サーバー(MOD 配置用)。各 MC サーバーの /data 群を共有マウントし、
+# /data/<server-id>/mods へ jar を直接配置できるようにする(要件 FR-7 / Phase 6-1)。
+# 注意: MC サーバーコンテナは管理アプリ(API)が Docker API 経由で動的生成するため、
+# この compose には含めない。ここでは静的サービス(FTP)のみを定義する。
+#
+# 起動: docker compose up -d ftp
+# 接続情報は管理画面(FTP 連携)にも表示される。
+services:
+  ftp:
+    image: instrumentisto/pure-ftpd:latest
+    container_name: mc-manager-ftp
+    restart: unless-stopped
+    ports:
+      # 制御ポート
+      - "${FTP_PORT:-21}:21"
+      # パッシブモード用ポート範囲(クライアント互換のため必須)
+      - "${FTP_PASSIVE_PORT_START:-30000}-${FTP_PASSIVE_PORT_END:-30009}:30000-30009"
+    environment:
+      # publishhost には LAN 内クライアントから到達可能なホスト IP を設定する。
+      FTP_USER_NAME: "${FTP_USER:-mcadmin}"
+      FTP_USER_PASS: "${FTP_PASSWORD:?FTP_PASSWORD must be set}"
+      # コンテナ内のホームを /data に固定(全サーバーの /data 群をここへマウント)
+      FTP_USER_HOME: "/data"
+    command:
+      - /usr/sbin/pure-ftpd
+      - -l
+      - "puredb:/etc/pure-ftpd/pureftpd.pdb"
+      - -E
+      - -j
+      - -R
+      - -P
+      - "${FTP_PUBLISH_HOST:-127.0.0.1}"
+      - -p
+      - "30000:30009"
+    volumes:
+      # 管理アプリの SERVER_DATA_ROOT(各サーバーの /data 群)を共有マウント。
+      # ホスト側パスは管理アプリの設定 (SERVER_DATA_ROOT) と一致させること。
+      - "${SERVER_DATA_ROOT:-./data/servers}:/data"

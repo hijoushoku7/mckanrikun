@@ -9,7 +9,9 @@ import {
   getServer,
   listServersWithStatus,
   refreshServerStatus,
+  updateServer,
 } from "../services/servers.ts";
+import { ftpModsPath } from "../services/ftp.ts";
 import {
   findPortConflicts,
   isValidPort,
@@ -139,6 +141,51 @@ serverRoutes.get("/:id", async (c) => {
   if (!server) return c.json({ error: "not found" }, 404);
   const liveStatus = await refreshServerStatus(id);
   return c.json({ server: { ...sanitize(server), liveStatus } });
+});
+
+/** サーバー設定の更新(名前 / メモリ割当)。operator 以上。 */
+serverRoutes.patch("/:id", requireRole("admin", "operator"), async (c) => {
+  const id = c.req.param("id");
+  if (!getServer(id)) return c.json({ error: "not found" }, 404);
+
+  const body = await c.req.json().catch(() => null);
+  const patch: { name?: string; memoryMb?: number } = {};
+
+  if (body?.name !== undefined) {
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (!name) return c.json({ error: "name must not be empty" }, 400);
+    patch.name = name;
+  }
+  if (body?.memoryMb !== undefined) {
+    const m = body.memoryMb;
+    if (typeof m !== "number" || !Number.isInteger(m) || m < 512 || m > 65536) {
+      return c.json({ error: "memoryMb must be an integer in [512, 65536]" }, 400);
+    }
+    patch.memoryMb = m;
+  }
+  if (Object.keys(patch).length === 0) {
+    return c.json({ error: "nothing to update" }, 400);
+  }
+
+  try {
+    const updated = await updateServer(id, patch);
+    return c.json({ server: updated ? sanitize(updated) : null });
+  } catch (err) {
+    return c.json(
+      {
+        error: "failed to update server",
+        detail: err instanceof Error ? err.message : undefined,
+      },
+      502,
+    );
+  }
+});
+
+/** 当該サーバーの MOD 配置先 FTP パス。全ロール閲覧可。 */
+serverRoutes.get("/:id/ftp", (c) => {
+  const id = c.req.param("id");
+  if (!getServer(id)) return c.json({ error: "not found" }, 404);
+  return c.json({ modsPath: ftpModsPath(id) });
 });
 
 /** サーバー削除(コンテナ削除 + ポート解放 + DB 行削除)。operator 以上。 */

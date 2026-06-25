@@ -49,7 +49,16 @@ npm run dev:web    # http://localhost:3000
   RCON 経由のコマンド送信(`POST /api/servers/:id/console`)、ターミナル風コンソール UI。
 - **Phase 5(設定編集)**: `server.properties` を GUI フォームで編集(主要項目、型・範囲バリデーション、
   要再起動項目の明示)。`GET/PUT /api/servers/:id/properties`。
-- Phase 6 以降(FTP / リソース表示)は順次実装予定。
+- **Phase 6(FTP 連携 & リソース表示)**: FTP サーバー(pure-ftpd)を docker compose で定義、
+  接続情報の表示(`/ftp`)、ポート使用状況一覧(`/ports`、FTP ポートも登録)、メモリ割当の編集反映
+  (`PATCH /api/servers/:id`、コンテナ再作成)。
+- **Phase 7(仕上げ)**: ダッシュボード/エラーハンドリング/セットアップ手順の最終化。
+
+## FTP(MOD 配置)
+
+`docker compose up -d ftp` で FTP サーバーを起動(要 `FTP_PASSWORD` 等の環境変数。
+`SERVER_DATA_ROOT` を管理アプリと一致させる)。各サーバーの mods は FTP で
+`/<server-id>/mods` へ配置する。Web からのアップロードは行わない(スコープ外)。
 
 ## パッケージ方針
 

@@ -35,4 +35,10 @@ export const config = {
   /** itzg コンテナ内の MC ゲームポート / RCON ポート(固定)。 */
   containerGamePort: 25565,
   containerRconPort: 25575,
+  /** FTP 接続情報(画面表示用 / FR-7)。LAN クライアントから到達可能な値を設定。 */
+  ftpHost: process.env.FTP_PUBLISH_HOST ?? "",
+  ftpPort: num(process.env.FTP_PORT, 21),
+  ftpUser: process.env.FTP_USER ?? "mcadmin",
+  /** FTP ルート配下、各サーバーの mods 配置パスのテンプレート(:id を置換)。 */
+  ftpModsPathTemplate: process.env.FTP_MODS_PATH_TEMPLATE ?? "/:id/mods",
 } as const;

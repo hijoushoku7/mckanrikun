@@ -13,6 +13,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/", icon: "▪" },
+  { label: "ポート", href: "/ports", icon: "▪" },
+  { label: "FTP", href: "/ftp", icon: "▪" },
   { label: "Users", href: "/users", icon: "▪", adminOnly: true },
 ];
 

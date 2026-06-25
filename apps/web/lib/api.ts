@@ -8,6 +8,7 @@ import type {
   CreateServerPayload,
   ServerStatus,
   ServerProperties,
+  FtpInfo,
 } from "./types";
 
 const API_BASE =
@@ -204,4 +205,27 @@ export async function saveServerProperties(
     body: JSON.stringify({ updates }),
   });
   return data;
+}
+
+// FTP
+export async function getFtpInfo(): Promise<FtpInfo> {
+  const { data } = await apiFetch<{ ftp: FtpInfo }>("/api/ftp");
+  return data.ftp;
+}
+
+export async function getServerFtp(id: string): Promise<{ modsPath: string }> {
+  const { data } = await apiFetch<{ modsPath: string }>(`/api/servers/${id}/ftp`);
+  return data;
+}
+
+// Update server (name / memoryMb)
+export async function updateServer(
+  id: string,
+  patch: { name?: string; memoryMb?: number }
+): Promise<Server> {
+  const { data } = await apiFetch<{ server: Server }>(`/api/servers/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+  return data.server;
 }
