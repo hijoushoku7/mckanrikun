@@ -1,4 +1,13 @@
-import type { PublicUser, Role } from "./types";
+import type {
+  PublicUser,
+  Role,
+  Server,
+  PortAllocation,
+  LoaderType,
+  LoaderVersions,
+  CreateServerPayload,
+  ServerStatus,
+} from "./types";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8080";
@@ -94,4 +103,61 @@ export async function updateUser(
 
 export async function deleteUser(id: string): Promise<void> {
   await apiFetch<{ ok: boolean }>(`/api/users/${id}`, { method: "DELETE" });
+}
+
+// Servers
+export async function getLoaders(): Promise<LoaderType[]> {
+  const { data } = await apiFetch<{ loaders: LoaderType[] }>("/api/meta/loaders");
+  return data.loaders;
+}
+
+export async function getLoaderVersions(loader: LoaderType): Promise<LoaderVersions> {
+  const { data } = await apiFetch<LoaderVersions>(`/api/meta/versions/${loader}`);
+  return data;
+}
+
+export async function getJavaTag(
+  mcVersion: string,
+  loader: LoaderType
+): Promise<string> {
+  const params = new URLSearchParams({ mcVersion, loader });
+  const { data } = await apiFetch<{ javaTag: string }>(
+    `/api/meta/java-tag?${params.toString()}`
+  );
+  return data.javaTag;
+}
+
+export async function listServers(): Promise<Server[]> {
+  const { data } = await apiFetch<{ servers: Server[] }>("/api/servers");
+  return data.servers;
+}
+
+export async function createServer(
+  payload: CreateServerPayload
+): Promise<{ server: Server; status: number }> {
+  const { data, status } = await apiFetch<{ server: Server }>("/api/servers", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return { server: data.server, status };
+}
+
+export async function controlServer(
+  id: string,
+  action: "start" | "stop" | "restart"
+): Promise<ServerStatus> {
+  const { data } = await apiFetch<{ ok: boolean; status: ServerStatus }>(
+    `/api/servers/${id}/${action}`,
+    { method: "POST" }
+  );
+  return data.status;
+}
+
+export async function deleteServer(id: string): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/api/servers/${id}`, { method: "DELETE" });
+}
+
+export async function listPorts(): Promise<PortAllocation[]> {
+  const { data } = await apiFetch<{ allocations: PortAllocation[] }>("/api/ports");
+  return data.allocations;
 }

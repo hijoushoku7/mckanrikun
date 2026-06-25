@@ -5,6 +5,8 @@ import { config } from "./config.ts";
 import { startDockerReconciliation } from "./docker/bootstrap.ts";
 import type { AppEnv } from "./middleware/auth.ts";
 import { authRoutes } from "./routes/auth.ts";
+import { metaRoutes } from "./routes/meta.ts";
+import { portRoutes } from "./routes/ports.ts";
 import { serverRoutes } from "./routes/servers.ts";
 import { userRoutes } from "./routes/users.ts";
 import { purgeExpiredSessions } from "./services/auth.ts";
@@ -24,6 +26,8 @@ app.get("/health", (c) => c.json({ ok: true }));
 app.route("/api/auth", authRoutes);
 app.route("/api/users", userRoutes);
 app.route("/api/servers", serverRoutes);
+app.route("/api/meta", metaRoutes);
+app.route("/api/ports", portRoutes);
 
 // 起動時と定期的に期限切れセッションを掃除する。
 purgeExpiredSessions();

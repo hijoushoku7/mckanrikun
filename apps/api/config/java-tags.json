@@ -1,0 +1,14 @@
+{
+  "_comment": "MC バージョン → itzg Java タグ 対応表(要件 §6)。後から更新可能なよう外出し。rules は上から順に評価し、最初にマッチした tag を採用。range は [min, max](両端含む, null は無制限)。loaderOverrides はローダー種別ごとの上書き(古い Forge が Java 8 必須など)。",
+  "default": "java21",
+  "rules": [
+    { "tag": "java21", "min": "1.20.5", "max": null },
+    { "tag": "java17", "min": "1.17", "max": "1.20.4" },
+    { "tag": "java8", "min": null, "max": "1.16.5" }
+  ],
+  "loaderOverrides": {
+    "FORGE": [
+      { "tag": "java8", "min": null, "max": "1.16.5" }
+    ]
+  }
+}

@@ -26,4 +26,13 @@ export const config = {
   dockerSocket: process.env.DOCKER_SOCKET ?? "/var/run/docker.sock",
   /** コンテナ状態ポーリング間隔(ミリ秒)。 */
   statusPollMs: num(process.env.STATUS_POLL_MS, 5000),
+  /** Java タグ対応表(§6)の設定ファイルパス(cwd 基準)。 */
+  javaTagsPath: process.env.JAVA_TAGS_PATH ?? "./config/java-tags.json",
+  /** バージョンメタ情報のキャッシュ TTL(ミリ秒)。既定 1 時間。 */
+  versionCacheTtlMs: num(process.env.VERSION_CACHE_TTL_MS, 60 * 60 * 1000),
+  /** 各 MC サーバーの /data を置くホスト側ルートディレクトリ。 */
+  serverDataRoot: process.env.SERVER_DATA_ROOT ?? "./data/servers",
+  /** itzg コンテナ内の MC ゲームポート / RCON ポート(固定)。 */
+  containerGamePort: 25565,
+  containerRconPort: 25575,
 } as const;
