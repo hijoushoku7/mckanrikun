@@ -42,9 +42,12 @@ Ubuntu Server 単一ホストでの本番運用は同梱の `docker-compose.yml`
 ```bash
 cp .env.example .env      # 各値を環境に合わせて編集(下表)
 docker compose up -d --build
-# 初期 admin を作成(初回のみ)
-docker compose run --rm api npm run db:seed
 ```
+
+api コンテナは起動時に **マイグレーション適用 → 初期 admin の作成(冪等)** を自動で行う。
+admin は `.env` の `INITIAL_ADMIN_USER` / `INITIAL_ADMIN_PASSWORD` から作成され、既に存在すれば
+スキップする(`INITIAL_ADMIN_PASSWORD` 未設定時はランダム生成して `docker compose logs api`
+に出力)。手動で再作成する場合は `docker compose run --rm api node dist/db/seed.js`。
 
 | 変数 | 説明 |
 |---|---|

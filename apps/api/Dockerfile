@@ -30,5 +30,7 @@ COPY --from=builder /app/apps/api/package.json /app/apps/api/package.json
 
 WORKDIR /app/apps/api
 EXPOSE 8080
-# 起動時にマイグレーション適用(冪等)→ API 起動。初期 admin は `npm run db:seed`。
-CMD ["sh", "-c", "node dist/db/migrate.js && node dist/index.js"]
+# 起動時に マイグレーション → 初期 admin シード(冪等: 既存なら skip)→ API 起動。
+# tsx/src は本番イメージに無いため、ビルド済み dist の JS を直接実行する。
+# INITIAL_ADMIN_PASSWORD 未設定時は seed がランダム生成してログ出力する。
+CMD ["sh", "-c", "node dist/db/migrate.js && node dist/db/seed.js && node dist/index.js"]
