@@ -161,3 +161,24 @@ export async function listPorts(): Promise<PortAllocation[]> {
   const { data } = await apiFetch<{ allocations: PortAllocation[] }>("/api/ports");
   return data.allocations;
 }
+
+export async function getServer(id: string): Promise<Server> {
+  const { data } = await apiFetch<{ server: Server }>(`/api/servers/${id}`);
+  return data.server;
+}
+
+export async function sendConsoleCommand(
+  id: string,
+  command: string
+): Promise<string> {
+  const { data } = await apiFetch<{ response: string }>(
+    `/api/servers/${id}/console`,
+    {
+      method: "POST",
+      body: JSON.stringify({ command }),
+    }
+  );
+  return data.response;
+}
+
+export const WS_BASE = API_BASE.replace(/^http/, "ws");
