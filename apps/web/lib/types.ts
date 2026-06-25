@@ -66,3 +66,19 @@ export interface CreateServerPayload {
   rconPort: number;
   eulaAccepted: true;
 }
+
+// server.properties GUI
+export interface PropertyField {
+  key: string;
+  label: string;
+  type: "bool" | "int" | "enum" | "string";
+  options?: string[];
+  min?: number;
+  max?: number;
+  requiresRestart: boolean;
+}
+
+export interface ServerProperties {
+  fields: PropertyField[];
+  values: Record<string, string>;
+}
