@@ -67,6 +67,14 @@ export interface CreateServerPayload {
   eulaAccepted: true;
 }
 
+// FTP
+export interface FtpInfo {
+  host: string;
+  port: number;
+  user: string;
+  modsPathTemplate: string;
+}
+
 // server.properties GUI
 export interface PropertyField {
   key: string;

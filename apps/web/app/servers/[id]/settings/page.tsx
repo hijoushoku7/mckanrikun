@@ -12,8 +12,11 @@ import {
   getServer,
   getServerProperties,
   saveServerProperties,
+  getFtpInfo,
+  getServerFtp,
+  updateServer,
 } from "@/lib/api";
-import type { Server, ServerStatus, PropertyField } from "@/lib/types";
+import type { Server, ServerStatus, PropertyField, FtpInfo } from "@/lib/types";
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -345,7 +348,7 @@ function SettingsContent() {
   // 409: server.properties 未生成
   const [notReady, setNotReady] = useState(false);
 
-  // Save state
+  // Save state (properties)
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [restartKeys, setRestartKeys] = useState<string[]>([]);
@@ -355,12 +358,25 @@ function SettingsContent() {
     Record<string, string>
   >({});
 
+  // FTP state
+  const [ftpInfo, setFtpInfo] = useState<FtpInfo | null>(null);
+  const [serverFtpPath, setServerFtpPath] = useState<string | null>(null);
+  const [ftpLoading, setFtpLoading] = useState(true);
+
+  // Memory edit state
+  const [memoryInput, setMemoryInput] = useState<string>("");
+  const [memoryError, setMemoryError] = useState<string | null>(null);
+  const [memorySaving, setMemorySaving] = useState(false);
+
   // ── Fetch server info ──
   useEffect(() => {
     if (!id) return;
     setServerLoading(true);
     getServer(id)
-      .then((s) => setServer(s))
+      .then((s) => {
+        setServer(s);
+        setMemoryInput(String(s.memoryMb));
+      })
       .catch((err) => {
         if (err instanceof ApiError) {
           toast(`サーバー情報の取得に失敗: ${err.message}`, "error");
@@ -369,6 +385,21 @@ function SettingsContent() {
         }
       })
       .finally(() => setServerLoading(false));
+  }, [id]);
+
+  // ── Fetch FTP info ──
+  useEffect(() => {
+    if (!id) return;
+    setFtpLoading(true);
+    Promise.all([getFtpInfo(), getServerFtp(id)])
+      .then(([info, serverFtp]) => {
+        setFtpInfo(info);
+        setServerFtpPath(serverFtp.modsPath);
+      })
+      .catch(() => {
+        // FTP 情報取得失敗は非ブロッキング
+      })
+      .finally(() => setFtpLoading(false));
   }, [id]);
 
   // ── Fetch properties ──
@@ -496,6 +527,38 @@ function SettingsContent() {
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ── Memory save handler ──
+  async function handleMemorySave(e: React.FormEvent) {
+    e.preventDefault();
+    setMemoryError(null);
+    const val = parseInt(memoryInput, 10);
+    if (isNaN(val) || !Number.isInteger(val) || val < 512 || val > 65536) {
+      setMemoryError("512〜65536 の整数を入力してください。");
+      return;
+    }
+    setMemorySaving(true);
+    try {
+      const updated = await updateServer(id, { memoryMb: val });
+      setServer(updated);
+      setMemoryInput(String(updated.memoryMb));
+      toast(`メモリを ${updated.memoryMb.toLocaleString()} MB に変更しました。`, "success");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 400) {
+        setMemoryError(`入力値エラー: ${err.message}`);
+      } else if (err instanceof ApiError && err.status === 404) {
+        setMemoryError("サーバーが見つかりません。");
+      } else if (err instanceof ApiError && err.status === 502) {
+        setMemoryError(`Docker エラー: ${err.message}`);
+      } else if (err instanceof ApiError) {
+        setMemoryError(`保存に失敗しました: ${err.message}`);
+      } else {
+        setMemoryError("保存に失敗しました。");
+      }
+    } finally {
+      setMemorySaving(false);
     }
   }
 
@@ -932,6 +995,349 @@ function SettingsContent() {
           )}
         </form>
       )}
+
+      {/* ── リソース (メモリ) セクション ── */}
+      <div
+        style={{
+          marginTop: "32px",
+          backgroundColor: "var(--color-bg-card)",
+          border: "1px solid var(--color-border)",
+          borderRadius: "8px",
+          padding: "24px",
+        }}
+      >
+        <h2
+          style={{
+            margin: "0 0 8px",
+            fontSize: "13px",
+            fontFamily: "var(--font-mono)",
+            fontWeight: 600,
+            color: "var(--color-text-secondary)",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
+        >
+          リソース
+        </h2>
+        <p
+          style={{
+            margin: "0 0 20px",
+            fontSize: "12px",
+            color: "var(--color-warning)",
+            fontFamily: "var(--font-mono)",
+            backgroundColor: "#3a2e10",
+            padding: "8px 12px",
+            borderRadius: "4px",
+            border: "1px solid var(--color-warning)",
+          }}
+        >
+          メモリ変更はコンテナの再作成を伴い、一時的に停止します。
+        </p>
+
+        <form onSubmit={(e) => void handleMemorySave(e)}>
+          <div style={{ marginBottom: "16px", maxWidth: "280px" }}>
+            <label
+              htmlFor="memoryInput"
+              style={{
+                display: "block",
+                fontSize: "11px",
+                fontFamily: "var(--font-mono)",
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                color: "var(--color-text-secondary)",
+                marginBottom: "6px",
+              }}
+            >
+              メモリ (MB)
+            </label>
+            <input
+              id="memoryInput"
+              type="number"
+              min={512}
+              max={65536}
+              step={1}
+              value={memoryInput}
+              disabled={!canOperate || memorySaving}
+              onChange={(e) => {
+                setMemoryInput(e.target.value);
+                setMemoryError(null);
+              }}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                fontSize: "13px",
+                fontFamily: "var(--font-mono)",
+                backgroundColor: canOperate
+                  ? "var(--color-bg-base)"
+                  : "var(--color-bg-elevated)",
+                border: `1px solid ${memoryError ? "var(--color-danger)" : "var(--color-border-muted)"}`,
+                borderRadius: "4px",
+                color: canOperate
+                  ? "var(--color-text-primary)"
+                  : "var(--color-text-secondary)",
+                outline: "none",
+                boxSizing: "border-box",
+                cursor: canOperate ? "text" : "default",
+              }}
+              onFocus={(e) => {
+                if (canOperate)
+                  e.currentTarget.style.borderColor = "var(--color-accent)";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = memoryError
+                  ? "var(--color-danger)"
+                  : "var(--color-border-muted)";
+              }}
+            />
+            <p
+              style={{
+                margin: "4px 0 0",
+                fontSize: "11px",
+                color: "var(--color-text-muted)",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              512 〜 65536
+            </p>
+            {memoryError && (
+              <p
+                style={{
+                  margin: "4px 0 0",
+                  fontSize: "11px",
+                  color: "var(--color-danger)",
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                {memoryError}
+              </p>
+            )}
+          </div>
+
+          {canOperate ? (
+            <button
+              type="submit"
+              disabled={memorySaving}
+              style={{
+                padding: "9px 24px",
+                fontSize: "13px",
+                fontFamily: "var(--font-mono)",
+                fontWeight: 600,
+                backgroundColor: memorySaving
+                  ? "var(--color-accent-dim)"
+                  : "var(--color-accent)",
+                color: memorySaving ? "var(--color-accent)" : "#0d1117",
+                border: "none",
+                borderRadius: "4px",
+                cursor: memorySaving ? "not-allowed" : "pointer",
+                transition: "opacity 0.15s",
+              }}
+            >
+              {memorySaving ? "適用中…(コンテナを再作成します)" : "保存"}
+            </button>
+          ) : (
+            <p
+              style={{
+                margin: 0,
+                fontSize: "12px",
+                fontFamily: "var(--font-mono)",
+                color: "var(--color-text-muted)",
+              }}
+            >
+              閲覧専用モード — メモリの変更には operator 以上のロールが必要です。
+            </p>
+          )}
+        </form>
+      </div>
+
+      {/* ── MOD 配置 (FTP) セクション ── */}
+      <div
+        style={{
+          marginTop: "24px",
+          backgroundColor: "var(--color-bg-card)",
+          border: "1px solid var(--color-border)",
+          borderRadius: "8px",
+          padding: "24px",
+        }}
+      >
+        <h2
+          style={{
+            margin: "0 0 16px",
+            fontSize: "13px",
+            fontFamily: "var(--font-mono)",
+            fontWeight: 600,
+            color: "var(--color-text-secondary)",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
+        >
+          MOD 配置 (FTP)
+        </h2>
+
+        {ftpLoading ? (
+          <div
+            style={{
+              fontSize: "13px",
+              fontFamily: "var(--font-mono)",
+              color: "var(--color-text-muted)",
+            }}
+          >
+            Loading…
+          </div>
+        ) : !ftpInfo ? (
+          <div
+            style={{
+              fontSize: "13px",
+              fontFamily: "var(--font-mono)",
+              color: "var(--color-text-muted)",
+            }}
+          >
+            FTP 情報を取得できませんでした。
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+              gap: "16px",
+            }}
+          >
+            {/* Host */}
+            <div>
+              <span
+                style={{
+                  display: "block",
+                  fontSize: "11px",
+                  fontFamily: "var(--font-mono)",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  color: "var(--color-text-secondary)",
+                  marginBottom: "6px",
+                }}
+              >
+                ホスト
+              </span>
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "13px",
+                  padding: "8px 12px",
+                  backgroundColor: "var(--color-bg-base)",
+                  border: "1px solid var(--color-border-muted)",
+                  borderRadius: "4px",
+                  color: ftpInfo.host
+                    ? "var(--color-text-primary)"
+                    : "var(--color-text-muted)",
+                  fontStyle: ftpInfo.host ? "normal" : "italic",
+                  userSelect: "text",
+                }}
+              >
+                {ftpInfo.host || "未設定（サーバーのホスト IP を使用）"}
+              </div>
+            </div>
+
+            {/* Port */}
+            <div>
+              <span
+                style={{
+                  display: "block",
+                  fontSize: "11px",
+                  fontFamily: "var(--font-mono)",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  color: "var(--color-text-secondary)",
+                  marginBottom: "6px",
+                }}
+              >
+                ポート
+              </span>
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "13px",
+                  padding: "8px 12px",
+                  backgroundColor: "var(--color-bg-base)",
+                  border: "1px solid var(--color-border-muted)",
+                  borderRadius: "4px",
+                  color: "var(--color-text-primary)",
+                  userSelect: "text",
+                }}
+              >
+                {ftpInfo.port}
+              </div>
+            </div>
+
+            {/* User */}
+            <div>
+              <span
+                style={{
+                  display: "block",
+                  fontSize: "11px",
+                  fontFamily: "var(--font-mono)",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  color: "var(--color-text-secondary)",
+                  marginBottom: "6px",
+                }}
+              >
+                ユーザー名
+              </span>
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "13px",
+                  padding: "8px 12px",
+                  backgroundColor: "var(--color-bg-base)",
+                  border: "1px solid var(--color-border-muted)",
+                  borderRadius: "4px",
+                  color: "var(--color-text-primary)",
+                  userSelect: "text",
+                }}
+              >
+                {ftpInfo.user}
+              </div>
+            </div>
+
+            {/* MODs path for this server */}
+            {serverFtpPath && (
+              <div style={{ gridColumn: "1 / -1" }}>
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: "11px",
+                    fontFamily: "var(--font-mono)",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--color-text-secondary)",
+                    marginBottom: "6px",
+                  }}
+                >
+                  このサーバーの MOD 配置パス
+                </span>
+                <div
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "13px",
+                    padding: "8px 12px",
+                    backgroundColor: "var(--color-bg-base)",
+                    border: "1px solid var(--color-border-muted)",
+                    borderRadius: "4px",
+                    color: "var(--color-accent)",
+                    userSelect: "text",
+                    wordBreak: "break-all",
+                  }}
+                >
+                  {serverFtpPath}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
