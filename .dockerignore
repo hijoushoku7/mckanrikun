@@ -1,0 +1,11 @@
+**/node_modules
+**/.next
+**/dist
+**/*.tsbuildinfo
+**/.env
+**/.env.local
+data/
+.git
+*.log
+.claude
+.agents
