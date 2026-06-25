@@ -15,11 +15,13 @@
     "@hono/node-server": "^1.13.7",
     "argon2": "^0.44.0",
     "better-sqlite3": "^12.11.1",
+    "dockerode": "^5.0.0",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.27"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
+    "@types/dockerode": "^3.3.31",
     "@types/node": "^22.10.0",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.19.2",

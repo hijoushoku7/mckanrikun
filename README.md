@@ -38,8 +38,10 @@ npm run dev:web    # http://localhost:3000
 
 - **Phase 1(認証基盤)**: ログイン(セッション Cookie)、RBAC(admin/operator/viewer)、
   ユーザー管理画面(admin 限定)。
-- Phase 2 以降(Docker オーケストレーション / 作成ウィザード / コンソール / 設定編集 /
-  FTP)は順次実装予定。
+- **Phase 2(Docker オーケストレーション層)**: Docker Engine API(Unix ソケット)接続、
+  コンテナの生成/起動/停止/再起動/削除ラッパー、管理ラベルによる識別・再認識(再起動耐性)、
+  状態のポーリング + イベント購読。サーバー操作 API(`/api/servers`)。
+- Phase 3 以降(作成ウィザード / コンソール / 設定編集 / FTP)は順次実装予定。
 
 ## パッケージ方針
 

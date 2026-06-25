@@ -22,4 +22,8 @@ export const config = {
   /** 初期 admin 作成用(db:seed で利用)。 */
   initialAdminUser: process.env.INITIAL_ADMIN_USER ?? "admin",
   initialAdminPassword: process.env.INITIAL_ADMIN_PASSWORD ?? "",
+  /** Docker Engine API の Unix ソケットパス。 */
+  dockerSocket: process.env.DOCKER_SOCKET ?? "/var/run/docker.sock",
+  /** コンテナ状態ポーリング間隔(ミリ秒)。 */
+  statusPollMs: num(process.env.STATUS_POLL_MS, 5000),
 } as const;
