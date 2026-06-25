@@ -14,6 +14,7 @@ import {
   findPortConflicts,
   isValidPort,
 } from "../services/port-allocations.ts";
+import { sendRconCommand } from "../services/rcon.ts";
 
 type LoaderType = Server["loaderType"];
 const LOADERS: LoaderType[] = ["VANILLA", "FORGE", "NEOFORGE", "FABRIC"];
@@ -148,6 +149,34 @@ serverRoutes.delete("/:id", requireRole("admin", "operator"), async (c) => {
     );
   }
 });
+
+/** コンソールコマンド送信(RCON)。operator 以上。 */
+serverRoutes.post(
+  "/:id/console",
+  requireRole("admin", "operator"),
+  async (c) => {
+    const id = c.req.param("id");
+    const server = getServer(id);
+    if (!server) return c.json({ error: "not found" }, 404);
+
+    const body = await c.req.json().catch(() => null);
+    const command = typeof body?.command === "string" ? body.command.trim() : "";
+    if (!command) return c.json({ error: "command is required" }, 400);
+
+    try {
+      const response = await sendRconCommand(server, command);
+      return c.json({ response });
+    } catch (err) {
+      return c.json(
+        {
+          error: "RCON command failed",
+          detail: err instanceof Error ? err.message : undefined,
+        },
+        502,
+      );
+    }
+  },
+);
 
 /** 起動/停止/再起動。operator 以上。 */
 serverRoutes.post(

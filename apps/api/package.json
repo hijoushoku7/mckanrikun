@@ -17,12 +17,15 @@
     "better-sqlite3": "^12.11.1",
     "dockerode": "^5.0.0",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.27"
+    "hono": "^4.12.27",
+    "rcon-client": "^4.2.5",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
     "@types/dockerode": "^3.3.31",
     "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
