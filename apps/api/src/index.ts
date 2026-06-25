@@ -10,6 +10,8 @@ import { portRoutes } from "./routes/ports.ts";
 import { serverRoutes } from "./routes/servers.ts";
 import { userRoutes } from "./routes/users.ts";
 import { purgeExpiredSessions } from "./services/auth.ts";
+import { setupLogsWebSocket } from "./ws/logs.ts";
+import type { Server as HttpServer } from "node:http";
 
 const app = new Hono<AppEnv>();
 
@@ -36,8 +38,11 @@ setInterval(purgeExpiredSessions, 60 * 60 * 1000).unref();
 // Docker コンテナの再認識・状態同期を開始(Docker 不通でも起動は継続)。
 void startDockerReconciliation();
 
-serve({ fetch: app.fetch, port: config.port }, (info) => {
+const httpServer = serve({ fetch: app.fetch, port: config.port }, (info) => {
   console.log(`[api] listening on http://localhost:${info.port}`);
 });
+
+// コンソールログ配信用 WebSocket を同一サーバーにアタッチ。
+setupLogsWebSocket(httpServer as unknown as HttpServer);
 
 export type AppType = typeof app;

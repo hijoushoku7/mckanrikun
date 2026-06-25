@@ -423,17 +423,25 @@ export default function DashboardPage() {
                         transition: "opacity 0.15s",
                       }}
                     >
-                      {/* Name */}
+                      {/* Name (コンソールへのリンク。全ロール閲覧可) */}
                       <td
                         style={{
                           padding: "14px 16px",
                           fontFamily: "var(--font-mono)",
                           fontWeight: 600,
-                          color: "var(--color-text-primary)",
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {server.name}
+                        <Link
+                          href={`/servers/${server.id}/console`}
+                          style={{
+                            color: "var(--color-accent)",
+                            textDecoration: "none",
+                          }}
+                          title="コンソールを開く"
+                        >
+                          {server.name}
+                        </Link>
                       </td>
 
                       {/* Status badge */}

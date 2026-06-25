@@ -1,3 +1,4 @@
+import { Writable } from "node:stream";
 import type Docker from "dockerode";
 import { docker } from "./client.ts";
 import { managedFilter, serverIdFromLabels } from "./labels.ts";
@@ -131,6 +132,57 @@ export class DockerService {
     } catch {
       return "unknown";
     }
+  }
+
+  /**
+   * コンテナログを直近 tail 行 + ライブで購読する(要件 FR-2)。
+   * 返り値の関数で購読停止。multiplexed ログは demux してテキスト化する。
+   * onChunk は stdout/stderr をまとめてテキストで受け取る。
+   */
+  async streamLogs(
+    containerId: string,
+    opts: { tail?: number },
+    onChunk: (text: string) => void,
+    onClose?: (err?: Error) => void,
+  ): Promise<() => void> {
+    const container = this.client.getContainer(containerId);
+    const stream = (await container.logs({
+      follow: true,
+      stdout: true,
+      stderr: true,
+      tail: opts.tail ?? 200,
+      timestamps: false,
+    })) as NodeJS.ReadableStream & { destroy?: () => void };
+
+    const sink = new Writable({
+      write(chunk: Buffer, _enc, cb) {
+        onChunk(chunk.toString("utf8"));
+        cb();
+      },
+    });
+    // 非 TTY コンテナのログは多重化されているため demux する。
+    this.client.modem.demuxStream(stream, sink, sink);
+
+    stream.on("end", () => onClose?.());
+    stream.on("error", (err: Error) => onClose?.(err));
+
+    return () => {
+      stream.destroy?.();
+      sink.destroy();
+    };
+  }
+
+  /** 直近 tail 行のログを一括取得(フォロー無し)。 */
+  async getRecentLogs(containerId: string, tail = 200): Promise<string> {
+    const container = this.client.getContainer(containerId);
+    const buf = (await container.logs({
+      follow: false,
+      stdout: true,
+      stderr: true,
+      tail,
+      timestamps: false,
+    })) as unknown as Buffer;
+    return buf.toString("utf8");
   }
 
   /** 管理ラベルを持つコンテナを一覧。停止中も含む(all: true)。 */
