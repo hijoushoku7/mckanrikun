@@ -280,7 +280,7 @@ PortAllocation        // 使用済みポートの記録・表示用
 
 ## 10. パッケージ承認リスト
 
-> Phase 0 調査済み(2026-06-25 時点)。**ステータス: ユーザー承認待ち。** 承認後に導入する。
+> Phase 0 調査済み(2026-06-25 時点)。**ステータス: ✅ 承認済み(2026-06-25)。**
 > バージョンは導入時に `npm install <pkg>@latest` で再確認し、`npm audit` をパスすることを条件とする。
 
 ### npm パッケージ(ランタイム)
@@ -292,7 +292,7 @@ PortAllocation        // 使用済みポートの記録・表示用
 | API | hono | ^4.12.27 | 既知の重大脆弱性なし。JWT は `hono/jwt` 内蔵を利用可。 |
 | API 実行 | @hono/node-server | 最新 | Hono を Node で動かすアダプタ。 |
 | Docker 操作 | dockerode | ^5.0.0 | 週間 DL 約 440 万、事実上の標準。重大脆弱性なし。 |
-| RCON | rcon-client | ^4.2.5 | ⚠ **最終更新が古い(約2年)**。RCON プロトコル自体は安定で機能上は問題なし。代替候補: `ts-rcon`、または自前実装(プロトコルが単純)。**要判断ポイント**。 |
+| RCON | rcon-client | ^4.2.5 | ✅ 採用確定。RCON プロトコルは安定で機能・既知脆弱性に問題なし。 |
 | WebSocket | ws | ^8.21.0 | 既知の重大脆弱性なし(過去の DoS は修正済み)。 |
 | パスワードハッシュ | argon2 | ^0.44.0 | OWASP 推奨 argon2id。ネイティブビルド。重大脆弱性なし。 |
 | DB ドライバ | better-sqlite3 | ^12.11.1 | 同期 SQLite ドライバ。重大脆弱性なし。 |
@@ -307,19 +307,24 @@ PortAllocation        // 使用済みポートの記録・表示用
 | 実行 | tsx | 最新 | Hono 開発サーバー実行。 |
 | 型定義 | @types/dockerode, @types/better-sqlite3, @types/ws | 最新 | 型のみ。 |
 
-### 任意(必要なら追加・別途承認)
+### UI スタイリング(承認済み)
+
+| 用途 | パッケージ | 提案バージョン | 備考 |
+|---|---|---|---|
+| スタイリング | tailwindcss | 最新 | ✅ 採用確定。 |
+
+### 任意(必要なら別途承認)
 
 | 用途 | パッケージ | 備考 |
 |---|---|---|
 | JWT(代替) | jose ^6.2.3 | Hono 内蔵 `hono/jwt` で足りれば不要。 |
-| スタイリング | tailwindcss | UI の見た目を整える場合。未使用でも可。 |
 
 ### Docker イメージ
 
 | 用途 | イメージ | タグ | 備考 |
 |---|---|---|---|
 | MC サーバー | itzg/minecraft-server | java21 / java17 / java8 | MC バージョンに応じて自動選択(§6)。 |
-| FTP サーバー | stilliard/pure-ftpd<br>(代替: instrumentisto/pure-ftpd, Alpine 軽量) | 最新安定 | `/data` 群を共有マウント。 |
+| FTP サーバー | **instrumentisto/pure-ftpd**(Alpine 軽量) | 最新安定 | ✅ 採用確定。**MC サーバーとは独立したコンテナ**で `/data` 群を共有マウント。Web アップロードは行わず FTP のみ。 |
 
 ### 認証方式の方針
 - セッション(署名付き Cookie)または JWT(`hono/jwt`)。LAN 内管理用途のため**セッション Cookie を推奨**(JWT 失効管理が不要で単純)。
