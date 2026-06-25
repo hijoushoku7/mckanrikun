@@ -38,6 +38,7 @@ npm run dev:web    # http://localhost:3000
 ## 本番デプロイ(docker compose 一式)
 
 Ubuntu Server 単一ホストでの本番運用は同梱の `docker-compose.yml`(api / web / ftp)を使う。
+**詳細な手順・運用・トラブルシューティングは [`docs/deployment.md`](docs/deployment.md) を参照。**
 
 ```bash
 cp .env.example .env      # 各値を環境に合わせて編集(下表)
