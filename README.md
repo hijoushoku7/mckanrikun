@@ -47,7 +47,9 @@ npm run dev:web    # http://localhost:3000
   作成ウィザード UI + サーバー一覧ダッシュボード。
 - **Phase 4(コンソール)**: コンテナログのリアルタイム配信(WebSocket, 直近バッファ + ライブ)、
   RCON 経由のコマンド送信(`POST /api/servers/:id/console`)、ターミナル風コンソール UI。
-- Phase 5 以降(設定編集 / FTP)は順次実装予定。
+- **Phase 5(設定編集)**: `server.properties` を GUI フォームで編集(主要項目、型・範囲バリデーション、
+  要再起動項目の明示)。`GET/PUT /api/servers/:id/properties`。
+- Phase 6 以降(FTP / リソース表示)は順次実装予定。
 
 ## パッケージ方針
 

@@ -7,6 +7,7 @@ import type {
   LoaderVersions,
   CreateServerPayload,
   ServerStatus,
+  ServerProperties,
 } from "./types";
 
 const API_BASE =
@@ -182,3 +183,25 @@ export async function sendConsoleCommand(
 }
 
 export const WS_BASE = API_BASE.replace(/^http/, "ws");
+
+// Server properties (server.properties GUI)
+export async function getServerProperties(id: string): Promise<ServerProperties> {
+  const { data } = await apiFetch<ServerProperties>(
+    `/api/servers/${id}/properties`
+  );
+  return data;
+}
+
+export async function saveServerProperties(
+  id: string,
+  updates: Record<string, string | number | boolean>
+): Promise<{ updated: Record<string, string>; requiresRestart: string[] }> {
+  const { data } = await apiFetch<{
+    updated: Record<string, string>;
+    requiresRestart: string[];
+  }>(`/api/servers/${id}/properties`, {
+    method: "PUT",
+    body: JSON.stringify({ updates }),
+  });
+  return data;
+}
