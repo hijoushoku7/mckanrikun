@@ -15,6 +15,12 @@ import {
   isValidPort,
 } from "../services/port-allocations.ts";
 import { sendRconCommand } from "../services/rcon.ts";
+import {
+  EDITABLE_PROPERTIES,
+  getServerProperties,
+  PropertiesNotFoundError,
+  saveServerProperties,
+} from "../services/server-properties.ts";
 
 type LoaderType = Server["loaderType"];
 const LOADERS: LoaderType[] = ["VANILLA", "FORGE", "NEOFORGE", "FABRIC"];
@@ -149,6 +155,53 @@ serverRoutes.delete("/:id", requireRole("admin", "operator"), async (c) => {
     );
   }
 });
+
+/** server.properties の編集対象スキーマ + 現在値。全ロール閲覧可。 */
+serverRoutes.get("/:id/properties", async (c) => {
+  const id = c.req.param("id");
+  if (!getServer(id)) return c.json({ error: "not found" }, 404);
+  try {
+    const values = getServerProperties(id);
+    return c.json({ fields: EDITABLE_PROPERTIES, values });
+  } catch (err) {
+    if (err instanceof PropertiesNotFoundError) {
+      return c.json({ error: err.message, fields: EDITABLE_PROPERTIES }, 409);
+    }
+    return c.json(
+      { error: err instanceof Error ? err.message : "read failed" },
+      500,
+    );
+  }
+});
+
+/** server.properties を保存。operator 以上。要再起動キーを返す。 */
+serverRoutes.put(
+  "/:id/properties",
+  requireRole("admin", "operator"),
+  async (c) => {
+    const id = c.req.param("id");
+    if (!getServer(id)) return c.json({ error: "not found" }, 404);
+
+    const body = await c.req.json().catch(() => null);
+    const updates = body?.updates;
+    if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+      return c.json({ error: "updates object is required" }, 400);
+    }
+
+    try {
+      const result = saveServerProperties(id, updates as Record<string, unknown>);
+      return c.json(result);
+    } catch (err) {
+      if (err instanceof PropertiesNotFoundError) {
+        return c.json({ error: err.message }, 409);
+      }
+      return c.json(
+        { error: err instanceof Error ? err.message : "save failed" },
+        400,
+      );
+    }
+  },
+);
 
 /** コンソールコマンド送信(RCON)。operator 以上。 */
 serverRoutes.post(
