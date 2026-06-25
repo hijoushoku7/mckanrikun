@@ -1,13 +1,129 @@
+import { mkdirSync } from "node:fs";
+import { resolve } from "node:path";
 import { eq } from "drizzle-orm";
+import { config } from "../config.ts";
 import { db } from "../db/client.ts";
 import { servers, type Server } from "../db/schema.ts";
 import { dockerService } from "../docker/service.ts";
 import type { ServerStatus } from "../docker/status.ts";
+import { newId, newSessionToken } from "../lib/crypto.ts";
+import { buildItzgSpec } from "./itzg.ts";
+import { resolveJavaTag } from "./java-tags.ts";
+import {
+  allocatePorts,
+  releasePortsForServer,
+} from "./port-allocations.ts";
 
 /** DB のサーバー情報にライブステータスを付与した表示用ビュー。 */
 export interface ServerWithStatus extends Server {
   liveStatus: ServerStatus;
 }
+
+export interface CreateServerInput {
+  name: string;
+  loaderType: Server["loaderType"];
+  mcVersion: string;
+  loaderVersion: string | null;
+  memoryMb: number;
+  gamePort: number;
+  rconPort: number;
+}
+
+/**
+ * 新規 MC サーバーを作成する(要件 §9 Phase 3)。
+ * ポート確保 → データディレクトリ作成 → itzg イメージ pull → コンテナ生成 → 起動、
+ * の順で行い、途中失敗時はポート解放と DB 行削除でロールバックする。
+ * 呼び出し前にバリデーション(EULA 同意・ポート重複・必須項目)済みであること。
+ */
+export const createServer = async (
+  input: CreateServerInput,
+): Promise<Server> => {
+  const id = newId();
+  const javaTag = resolveJavaTag(input.mcVersion, input.loaderType);
+  // RCON パスワードはランダム生成(URL セーフ)。
+  const rconPassword = newSessionToken();
+  const now = new Date();
+
+  const row: Server = {
+    id,
+    name: input.name,
+    loaderType: input.loaderType,
+    mcVersion: input.mcVersion,
+    loaderVersion: input.loaderVersion,
+    javaTag,
+    memoryMb: input.memoryMb,
+    gamePort: input.gamePort,
+    rconPort: input.rconPort,
+    rconPassword,
+    containerId: null,
+    eulaAccepted: true,
+    statusCache: "starting",
+    createdAt: now,
+    updatedAt: now,
+  };
+  db.insert(servers).values(row).run();
+  allocatePorts(
+    id,
+    [
+      { port: input.gamePort, protocol: "tcp", purpose: "game" },
+      { port: input.rconPort, protocol: "tcp", purpose: "rcon" },
+    ],
+    input.name,
+  );
+
+  try {
+    const dataDir = resolve(process.cwd(), config.serverDataRoot, id);
+    mkdirSync(dataDir, { recursive: true });
+
+    const spec = buildItzgSpec({
+      id,
+      name: input.name,
+      loaderType: input.loaderType,
+      mcVersion: input.mcVersion,
+      loaderVersion: input.loaderVersion,
+      javaTag,
+      memoryMb: input.memoryMb,
+      gamePort: input.gamePort,
+      rconPort: input.rconPort,
+      rconPassword,
+    });
+
+    await dockerService.pullImage(spec.image);
+    const containerId = await dockerService.create(spec);
+    await dockerService.start(containerId);
+
+    db.update(servers)
+      .set({ containerId, statusCache: "starting", updatedAt: new Date() })
+      .where(eq(servers.id, id))
+      .run();
+
+    return { ...row, containerId };
+  } catch (err) {
+    // ロールバック: 確保したポートと DB 行を取り消す。
+    releasePortsForServer(id);
+    db.delete(servers).where(eq(servers.id, id)).run();
+    throw err instanceof Error ? err : new Error("server creation failed");
+  }
+};
+
+/**
+ * サーバーを削除する。コンテナを強制削除し、ポート確保を解放、DB 行を削除する。
+ * /data(ホストバインド)は残す(誤削除防止。クリーンアップは FTP 等で運用)。
+ */
+export const deleteServer = async (id: string): Promise<boolean> => {
+  const server = getServer(id);
+  if (!server) return false;
+  if (server.containerId) {
+    try {
+      await dockerService.remove(server.containerId, { force: true });
+    } catch {
+      // コンテナが既に無い場合等は無視して DB 整合を優先。
+    }
+  }
+  releasePortsForServer(id);
+  db.delete(servers).where(eq(servers.id, id)).run();
+  return true;
+};
 
 export const getServer = (id: string): Server | undefined =>
   db.select().from(servers).where(eq(servers.id, id)).get();
