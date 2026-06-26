@@ -42,159 +42,119 @@ export default function LoginPage() {
 
   if (loading || user) return null;
 
+  const labelStyle: React.CSSProperties = {
+    display: "block",
+    fontFamily: "var(--font-pixel)",
+    fontSize: 9,
+    letterSpacing: "0.08em",
+    color: "var(--ink-soft)",
+    marginBottom: 8,
+  };
+
   return (
     <div
+      className="stone-surface"
       style={{
         minHeight: "100dvh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "var(--color-bg-base)",
-        padding: "24px",
+        padding: 24,
+        fontFamily: "var(--font-display)",
       }}
     >
-      <div style={{ width: "100%", maxWidth: "360px" }}>
-        {/* Header */}
-        <div style={{ marginBottom: "40px", textAlign: "center" }}>
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontWeight: 700,
-              fontSize: "18px",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              color: "var(--color-accent)",
-              marginBottom: "8px",
-            }}
-          >
-            MC管理くん
-          </div>
-          <div className="pixel-border" style={{ marginBottom: "8px" }} />
-          <p
-            style={{
-              fontSize: "13px",
-              color: "var(--color-text-secondary)",
-              margin: 0,
-            }}
-          >
-            Minecraft Server Management Console
-          </p>
-        </div>
-
-        {/* Card */}
+      <div style={{ width: "100%", maxWidth: 380 }}>
+        {/* Wordmark */}
         <div
           style={{
-            backgroundColor: "var(--color-bg-card)",
-            border: "1px solid var(--color-border)",
-            borderRadius: "8px",
-            padding: "28px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 14,
+            marginBottom: 24,
           }}
         >
+          <span
+            className="block-icon"
+            style={{
+              width: 52,
+              height: 52,
+              backgroundColor: "var(--grass)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <span
+              style={{ fontFamily: "var(--font-pixel)", fontSize: 15, color: "#f3f7ee" }}
+            >
+              MC
+            </span>
+          </span>
+          <div style={{ lineHeight: 1.1 }}>
+            <div style={{ fontSize: 26, fontWeight: 800, color: "var(--ink)" }}>
+              管理くん
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--font-pixel)",
+                fontSize: 8,
+                letterSpacing: "0.06em",
+                color: "var(--ink-mute)",
+                marginTop: 4,
+              }}
+            >
+              SERVER CONSOLE
+            </div>
+          </div>
+        </div>
+
+        {/* GUI panel */}
+        <div className="mc-panel" style={{ padding: 26 }}>
           <form onSubmit={(e) => void handleSubmit(e)}>
-            <div style={{ marginBottom: "20px" }}>
-              <label
-                htmlFor="username"
-                style={{
-                  display: "block",
-                  fontSize: "12px",
-                  fontFamily: "var(--font-mono)",
-                  color: "var(--color-text-secondary)",
-                  marginBottom: "6px",
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                }}
-              >
-                Username
+            <div style={{ marginBottom: 18 }}>
+              <label htmlFor="username" style={labelStyle}>
+                USERNAME
               </label>
               <input
                 id="username"
                 type="text"
+                className="mc-input"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 autoComplete="username"
                 autoFocus
-                style={{
-                  width: "100%",
-                  padding: "9px 12px",
-                  fontSize: "13px",
-                  fontFamily: "var(--font-mono)",
-                  backgroundColor: "var(--color-bg-base)",
-                  border: "1px solid var(--color-border-muted)",
-                  borderRadius: "4px",
-                  color: "var(--color-text-primary)",
-                  outline: "none",
-                  boxSizing: "border-box",
-                  transition: "border-color 0.15s",
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "var(--color-accent)";
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor =
-                    "var(--color-border-muted)";
-                }}
               />
             </div>
 
-            <div style={{ marginBottom: "24px" }}>
-              <label
-                htmlFor="password"
-                style={{
-                  display: "block",
-                  fontSize: "12px",
-                  fontFamily: "var(--font-mono)",
-                  color: "var(--color-text-secondary)",
-                  marginBottom: "6px",
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                }}
-              >
-                Password
+            <div style={{ marginBottom: 22 }}>
+              <label htmlFor="password" style={labelStyle}>
+                PASSWORD
               </label>
               <input
                 id="password"
                 type="password"
+                className="mc-input"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                style={{
-                  width: "100%",
-                  padding: "9px 12px",
-                  fontSize: "13px",
-                  fontFamily: "var(--font-mono)",
-                  backgroundColor: "var(--color-bg-base)",
-                  border: "1px solid var(--color-border-muted)",
-                  borderRadius: "4px",
-                  color: "var(--color-text-primary)",
-                  outline: "none",
-                  boxSizing: "border-box",
-                  transition: "border-color 0.15s",
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "var(--color-accent)";
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor =
-                    "var(--color-border-muted)";
-                }}
               />
             </div>
 
             {error && (
               <div
+                role="alert"
+                className="mc-slot"
                 style={{
                   padding: "10px 12px",
-                  marginBottom: "16px",
-                  backgroundColor: "#3a1a1a",
-                  border: "1px solid var(--color-danger)",
-                  borderRadius: "4px",
-                  fontSize: "12px",
-                  fontFamily: "var(--font-mono)",
-                  color: "var(--color-danger)",
+                  marginBottom: 16,
+                  fontFamily: "var(--font-data)",
+                  fontSize: 12,
+                  color: "#ffd9d3",
+                  backgroundColor: "var(--redstone-lo)",
                 }}
-                role="alert"
               >
                 {error}
               </div>
@@ -202,25 +162,11 @@ export default function LoginPage() {
 
             <button
               type="submit"
+              className="mc-btn mc-btn--grass"
               disabled={submitting}
-              style={{
-                width: "100%",
-                padding: "10px",
-                fontSize: "13px",
-                fontFamily: "var(--font-mono)",
-                fontWeight: 600,
-                letterSpacing: "0.06em",
-                backgroundColor: submitting
-                  ? "var(--color-accent-dim)"
-                  : "var(--color-accent)",
-                color: submitting ? "var(--color-accent)" : "#0d1117",
-                border: "none",
-                borderRadius: "4px",
-                cursor: submitting ? "not-allowed" : "pointer",
-                transition: "background-color 0.15s",
-              }}
+              style={{ width: "100%", padding: 12, fontSize: 14 }}
             >
-              {submitting ? "Signing in…" : "Sign in"}
+              {submitting ? "サインイン中…" : "サインイン"}
             </button>
           </form>
         </div>

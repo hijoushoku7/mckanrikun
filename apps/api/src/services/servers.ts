@@ -58,6 +58,7 @@ export const createServer = async (
     containerId: null,
     eulaAccepted: true,
     statusCache: "starting",
+    lastStartedAt: now,
     createdAt: now,
     updatedAt: now,
   };
@@ -250,6 +251,14 @@ export const controlServer = async (
   if (action === "start") await dockerService.start(server.containerId);
   else if (action === "stop") await dockerService.stop(server.containerId);
   else await dockerService.restart(server.containerId);
+
+  // 起動を伴う操作は「最後に起動した時刻」を更新(サイドバーの最近起動表示用)。
+  if (action === "start" || action === "restart") {
+    db.update(servers)
+      .set({ lastStartedAt: new Date(), updatedAt: new Date() })
+      .where(eq(servers.id, id))
+      .run();
+  }
 
   const status = await dockerService.getStatus(server.containerId);
   setStatusCache(id, status);

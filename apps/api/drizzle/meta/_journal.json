@@ -8,6 +8,13 @@
       "when": 1782356191730,
       "tag": "0000_bumpy_ozymandias",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1782445468574,
+      "tag": "0001_rainy_johnny_blaze",
+      "breakpoints": true
     }
   ]
 }

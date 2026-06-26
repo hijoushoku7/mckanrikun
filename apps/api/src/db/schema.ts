@@ -48,6 +48,8 @@ export const servers = sqliteTable("servers", {
     .notNull()
     .default(false),
   statusCache: text("status_cache").notNull().default("unknown"),
+  /** 最後に起動した時刻(start/restart 時に更新)。サイドバーの「最近起動」表示に使用。 */
+  lastStartedAt: integer("last_started_at", { mode: "timestamp_ms" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),

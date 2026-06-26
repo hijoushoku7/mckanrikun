@@ -1,21 +1,21 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Sidebar } from "@/components/Sidebar";
+import type { Role } from "@/lib/types";
 
-export default function DashboardLayout({
+/** Sandstone app frame: auth gate + sidebar + stone-surface main. */
+export function AppShell({
   children,
+  requiredRole,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
+  requiredRole?: Role;
 }) {
   return (
-    <AuthGuard>
-      <div
-        style={{
-          display: "flex",
-          minHeight: "100dvh",
-        }}
-      >
+    <AuthGuard requiredRole={requiredRole}>
+      <div style={{ display: "flex", minHeight: "100dvh" }}>
         <Sidebar />
         <main
           className="stone-surface"
