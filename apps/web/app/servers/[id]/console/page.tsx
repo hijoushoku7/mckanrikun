@@ -69,6 +69,23 @@ function ConsoleContent() {
       .finally(() => setServerLoading(false));
   }, [id]);
 
+  // ── ステータスの軽量ポーリング(操作後の状態変化を反映) ──
+  useEffect(() => {
+    if (!id) return;
+    const t = setInterval(() => {
+      getServer(id)
+        .then((s) =>
+          setServer((prev) =>
+            prev ? { ...prev, liveStatus: s.liveStatus } : s
+          )
+        )
+        .catch(() => {
+          // ポーリング失敗は無視(次回再試行)。
+        });
+    }, 5000);
+    return () => clearInterval(t);
+  }, [id]);
+
   // ── Log append helper ──
   const appendLog = useCallback((text: string, kind: LogEntry["kind"] = "log") => {
     setLogs((prev) => {
@@ -355,7 +372,37 @@ function ConsoleContent() {
           )}
         </div>
 
-        <WsIndicator />
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {server && (
+            <Link
+              href={`/servers/${id}/settings`}
+              style={{
+                padding: "7px 14px",
+                fontSize: "12px",
+                fontFamily: "var(--font-mono)",
+                backgroundColor: "transparent",
+                border: "1px solid var(--color-border-muted)",
+                borderRadius: "4px",
+                color: "var(--color-text-secondary)",
+                textDecoration: "none",
+                display: "inline-block",
+                transition: "border-color 0.15s, color 0.15s",
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-accent)";
+                e.currentTarget.style.color = "var(--color-accent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-border-muted)";
+                e.currentTarget.style.color = "var(--color-text-secondary)";
+              }}
+            >
+              ← 設定
+            </Link>
+          )}
+          <WsIndicator />
+        </div>
       </div>
 
       {/* Log viewer — an obsidian screen set into the sandstone console */}

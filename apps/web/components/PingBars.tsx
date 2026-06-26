@@ -48,6 +48,7 @@ const STATUS: Record<
 > = {
   running: { label: "RUNNING", color: "var(--grass)", filled: 5 },
   starting: { label: "STARTING", color: "var(--gold)", filled: 3, pulse: true },
+  stopping: { label: "STOPPING", color: "var(--gold)", filled: 2, pulse: true },
   stopped: { label: "STOPPED", color: "var(--ink-mute)", filled: 0 },
   error: { label: "ERROR", color: "var(--redstone)", filled: 5 },
   unknown: { label: "UNKNOWN", color: "var(--ink-mute)", filled: 0 },
