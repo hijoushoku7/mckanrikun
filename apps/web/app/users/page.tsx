@@ -1,20 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AuthGuard } from "@/components/AuthGuard";
-import { Sidebar } from "@/components/Sidebar";
+import { AppShell } from "@/components/AppShell";
+import { PageHeader, Panel, LoadingState, EmptyState } from "@/components/mc";
 import { toast } from "@/components/Toast";
-import { Spinner } from "@/components/Spinner";
-import {
-  ApiError,
-  createUser,
-  deleteUser,
-  listUsers,
-  updateUser,
-} from "@/lib/api";
+import { ApiError, createUser, deleteUser, listUsers, updateUser } from "@/lib/api";
 import type { PublicUser, Role } from "@/lib/types";
 
 const ROLES: Role[] = ["admin", "operator", "viewer"];
+const ROLE_LABEL: Record<Role, string> = {
+  admin: "管理者",
+  operator: "オペレーター",
+  viewer: "閲覧者",
+};
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString("ja-JP", {
@@ -28,21 +26,9 @@ function formatDate(iso: string): string {
 
 export default function UsersPage() {
   return (
-    <AuthGuard requiredRole="admin">
-      <div style={{ display: "flex", minHeight: "100dvh" }}>
-        <Sidebar />
-        <main
-          style={{
-            flex: 1,
-            padding: "32px",
-            overflowY: "auto",
-            backgroundColor: "var(--color-bg-base)",
-          }}
-        >
-          <UsersContent />
-        </main>
-      </div>
-    </AuthGuard>
+    <AppShell requiredRole="admin">
+      <UsersContent />
+    </AppShell>
   );
 }
 
@@ -63,7 +49,7 @@ function UsersContent() {
       const data = await listUsers();
       setUsers(data);
     } catch {
-      toast("Failed to load users.", "error");
+      toast("ユーザー一覧の取得に失敗しました。", "error");
     } finally {
       setLoadingUsers(false);
     }
@@ -86,14 +72,14 @@ function UsersContent() {
       setNewUsername("");
       setNewPassword("");
       setNewRole("viewer");
-      toast(`User "${created.username}" created.`, "success");
+      toast(`ユーザー「${created.username}」を作成しました。`, "success");
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        toast(`Username "${newUsername}" is already taken.`, "error");
+        toast(`ユーザー名「${newUsername}」は既に使われています。`, "error");
       } else if (err instanceof ApiError && err.status === 400) {
-        toast("Invalid input. Check username and password.", "error");
+        toast("入力が不正です。ユーザー名とパスワードを確認してください。", "error");
       } else {
-        toast("Failed to create user.", "error");
+        toast("ユーザーの作成に失敗しました。", "error");
       }
     } finally {
       setCreating(false);
@@ -105,12 +91,12 @@ function UsersContent() {
     try {
       const updated = await updateUser(user.id, { role });
       setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
-      toast(`Role updated to "${role}".`, "success");
+      toast(`ロールを「${ROLE_LABEL[role]}」に変更しました。`, "success");
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        toast("Cannot change role: this is the last admin.", "error");
+        toast("最後の管理者のロールは変更できません。", "error");
       } else {
-        toast("Failed to update role.", "error");
+        toast("ロールの変更に失敗しました。", "error");
       }
     } finally {
       setUpdatingId(null);
@@ -118,370 +104,125 @@ function UsersContent() {
   }
 
   async function handleDelete(user: PublicUser) {
-    if (
-      !window.confirm(
-        `Delete user "${user.username}"? This cannot be undone.`
-      )
-    )
+    if (!window.confirm(`ユーザー「${user.username}」を削除しますか？この操作は元に戻せません。`))
       return;
     setDeletingId(user.id);
     try {
       await deleteUser(user.id);
       setUsers((prev) => prev.filter((u) => u.id !== user.id));
-      toast(`User "${user.username}" deleted.`, "success");
+      toast(`ユーザー「${user.username}」を削除しました。`, "success");
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        toast("Cannot delete the last admin account.", "error");
+        toast("最後の管理者アカウントは削除できません。", "error");
       } else if (err instanceof ApiError && err.status === 404) {
-        toast("User not found.", "error");
+        toast("ユーザーが見つかりません。", "error");
       } else {
-        toast("Failed to delete user.", "error");
+        toast("ユーザーの削除に失敗しました。", "error");
       }
     } finally {
       setDeletingId(null);
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    padding: "8px 10px",
-    fontSize: "13px",
-    fontFamily: "var(--font-mono)",
-    backgroundColor: "var(--color-bg-base)",
-    border: "1px solid var(--color-border-muted)",
-    borderRadius: "4px",
-    color: "var(--color-text-primary)",
-    outline: "none",
-  };
-
   return (
-    <div>
-      {/* Page header */}
-      <div
-        style={{
-          marginBottom: "32px",
-          paddingBottom: "20px",
-          borderBottom: "1px solid var(--color-border)",
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: "20px",
-            fontWeight: 600,
-            color: "var(--color-text-primary)",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          User Management
-        </h1>
-        <p
-          style={{
-            margin: "6px 0 0",
-            fontSize: "13px",
-            color: "var(--color-text-secondary)",
-          }}
-        >
-          Manage console access and roles.
-        </p>
-      </div>
+    <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+      <PageHeader
+        eyebrow="ACCESS CONTROL"
+        title="ユーザー管理"
+        subtitle="コンソールへのアクセス権限とロールを管理します。"
+      />
 
-      {/* Create user form */}
-      <div
-        style={{
-          backgroundColor: "var(--color-bg-card)",
-          border: "1px solid var(--color-border)",
-          borderRadius: "8px",
-          padding: "24px",
-          marginBottom: "24px",
-        }}
-      >
-        <h2
-          style={{
-            margin: "0 0 16px",
-            fontSize: "13px",
-            fontFamily: "var(--font-mono)",
-            fontWeight: 600,
-            color: "var(--color-text-secondary)",
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-          }}
-        >
-          Add user
-        </h2>
+      {/* Create user */}
+      <Panel title="ユーザー追加" padded style={{ marginBottom: 22 }}>
         <form
           onSubmit={(e) => void handleCreate(e)}
-          style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}
+          style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "stretch" }}
         >
           <input
             type="text"
-            placeholder="Username"
+            className="mc-input"
+            placeholder="ユーザー名"
             value={newUsername}
             onChange={(e) => setNewUsername(e.target.value)}
             required
-            style={{ ...inputStyle, flex: "1 1 160px" }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = "var(--color-accent)";
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = "var(--color-border-muted)";
-            }}
+            autoComplete="off"
+            style={{ flex: "1 1 160px", width: "auto" }}
           />
           <input
             type="password"
-            placeholder="Password"
+            className="mc-input"
+            placeholder="パスワード"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             required
-            style={{ ...inputStyle, flex: "1 1 160px" }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = "var(--color-accent)";
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = "var(--color-border-muted)";
-            }}
+            autoComplete="new-password"
+            style={{ flex: "1 1 160px", width: "auto" }}
           />
           <select
+            className="mc-select"
             value={newRole}
             onChange={(e) => setNewRole(e.target.value as Role)}
-            style={{
-              ...inputStyle,
-              flex: "0 0 120px",
-              cursor: "pointer",
-              appearance: "none",
-              paddingRight: "28px",
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b949e'/%3E%3C/svg%3E")`,
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "right 10px center",
-            }}
+            style={{ flex: "0 0 150px" }}
           >
             {ROLES.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {ROLE_LABEL[r]}
               </option>
             ))}
           </select>
-          <button
-            type="submit"
-            disabled={creating}
-            style={{
-              padding: "8px 20px",
-              fontSize: "13px",
-              fontFamily: "var(--font-mono)",
-              fontWeight: 600,
-              backgroundColor: creating
-                ? "var(--color-accent-dim)"
-                : "var(--color-accent)",
-              color: creating ? "var(--color-accent)" : "#0d1117",
-              border: "none",
-              borderRadius: "4px",
-              cursor: creating ? "not-allowed" : "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {creating ? "Adding…" : "Add user"}
+          <button type="submit" className="mc-btn mc-btn--grass" disabled={creating}>
+            {creating ? "追加中…" : "追加"}
           </button>
         </form>
-      </div>
+      </Panel>
 
       {/* Users table */}
-      <div
-        style={{
-          backgroundColor: "var(--color-bg-card)",
-          border: "1px solid var(--color-border)",
-          borderRadius: "8px",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            padding: "16px 24px",
-            borderBottom: "1px solid var(--color-border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <h2
-            style={{
-              margin: 0,
-              fontSize: "13px",
-              fontFamily: "var(--font-mono)",
-              fontWeight: 600,
-              color: "var(--color-text-secondary)",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-            }}
-          >
-            Users
-          </h2>
-          <span
-            style={{
-              fontSize: "11px",
-              fontFamily: "var(--font-mono)",
-              color: "var(--color-text-muted)",
-            }}
-          >
-            {users.length} total
-          </span>
-        </div>
-
+      <Panel title="USERS" meta={`${users.length} 件`}>
         {loadingUsers ? (
-          <div
-            style={{
-              padding: "40px",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "12px",
-              color: "var(--color-text-secondary)",
-              fontSize: "13px",
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            <Spinner size={24} />
-            読み込み中…
-          </div>
+          <LoadingState />
         ) : users.length === 0 ? (
-          <div
-            style={{
-              padding: "40px",
-              textAlign: "center",
-              color: "var(--color-text-muted)",
-              fontSize: "13px",
-            }}
-          >
-            No users found.
-          </div>
+          <EmptyState message="ユーザーがいません" />
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "13px",
-              }}
-            >
+            <table className="mc-table">
               <thead>
-                <tr
-                  style={{
-                    borderBottom: "1px solid var(--color-border)",
-                    backgroundColor: "var(--color-bg-elevated)",
-                  }}
-                >
-                  {["Username", "Role", "Created", "Actions"].map((h) => (
-                    <th
-                      key={h}
-                      style={{
-                        padding: "10px 16px",
-                        textAlign: "left",
-                        fontSize: "11px",
-                        fontFamily: "var(--font-mono)",
-                        fontWeight: 600,
-                        color: "var(--color-text-muted)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.08em",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {h}
-                    </th>
+                <tr>
+                  {["ユーザー名", "ロール", "作成日時", "操作"].map((h) => (
+                    <th key={h}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {users.map((user, idx) => (
-                  <tr
-                    key={user.id}
-                    style={{
-                      borderBottom:
-                        idx < users.length - 1
-                          ? "1px solid var(--color-border)"
-                          : "none",
-                    }}
-                  >
-                    <td
-                      style={{
-                        padding: "12px 16px",
-                        fontFamily: "var(--font-mono)",
-                        color: "var(--color-text-primary)",
-                      }}
-                    >
-                      {user.username}
-                    </td>
-                    <td style={{ padding: "12px 16px" }}>
+                {users.map((user) => (
+                  <tr key={user.id}>
+                    <td style={{ fontWeight: 600 }}>{user.username}</td>
+                    <td>
                       <select
+                        className="mc-select"
                         value={user.role}
                         disabled={updatingId === user.id}
-                        onChange={(e) =>
-                          void handleRoleChange(user, e.target.value as Role)
-                        }
-                        style={{
-                          padding: "4px 24px 4px 8px",
-                          fontSize: "12px",
-                          fontFamily: "var(--font-mono)",
-                          backgroundColor: "var(--color-bg-base)",
-                          border: "1px solid var(--color-border-muted)",
-                          borderRadius: "4px",
-                          color: "var(--color-text-primary)",
-                          cursor:
-                            updatingId === user.id ? "wait" : "pointer",
-                          appearance: "none",
-                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b949e'/%3E%3C/svg%3E")`,
-                          backgroundRepeat: "no-repeat",
-                          backgroundPosition: "right 6px center",
-                        }}
+                        onChange={(e) => void handleRoleChange(user, e.target.value as Role)}
+                        style={{ fontSize: 12, padding: "5px 26px 5px 10px" }}
                       >
                         {ROLES.map((r) => (
                           <option key={r} value={r}>
-                            {r}
+                            {ROLE_LABEL[r]}
                           </option>
                         ))}
                       </select>
                     </td>
-                    <td
-                      style={{
-                        padding: "12px 16px",
-                        fontFamily: "var(--font-mono)",
-                        fontSize: "12px",
-                        color: "var(--color-text-secondary)",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
+                    <td style={{ color: "var(--ink-soft)", fontSize: 12 }}>
                       {formatDate(user.createdAt)}
                     </td>
-                    <td style={{ padding: "12px 16px" }}>
+                    <td>
                       <button
+                        type="button"
+                        className="mc-btn mc-btn--redstone"
                         onClick={() => void handleDelete(user)}
                         disabled={deletingId === user.id}
-                        style={{
-                          padding: "4px 12px",
-                          fontSize: "12px",
-                          fontFamily: "var(--font-mono)",
-                          backgroundColor: "transparent",
-                          border: "1px solid var(--color-border-muted)",
-                          borderRadius: "4px",
-                          color: "var(--color-text-secondary)",
-                          cursor:
-                            deletingId === user.id ? "wait" : "pointer",
-                          transition: "border-color 0.15s, color 0.15s",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (deletingId !== user.id) {
-                            e.currentTarget.style.borderColor =
-                              "var(--color-danger)";
-                            e.currentTarget.style.color =
-                              "var(--color-danger)";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor =
-                            "var(--color-border-muted)";
-                          e.currentTarget.style.color =
-                            "var(--color-text-secondary)";
-                        }}
+                        style={{ fontSize: 12, padding: "6px 12px" }}
                       >
-                        {deletingId === user.id ? "Deleting…" : "Delete"}
+                        {deletingId === user.id ? "削除中…" : "削除"}
                       </button>
                     </td>
                   </tr>
@@ -490,7 +231,7 @@ function UsersContent() {
             </table>
           </div>
         )}
-      </div>
+      </Panel>
     </div>
   );
 }

@@ -177,6 +177,117 @@
   background-color: rgba(255, 255, 255, 0.16);
 }
 
+/* Pixel eyebrow / section label */
+.mc-eyebrow {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--ink-mute);
+}
+
+/* Accent link on sandstone */
+.mc-link {
+  color: var(--grass-lo);
+  text-decoration: none;
+  font-weight: 700;
+}
+.mc-link:hover {
+  text-decoration: underline;
+}
+
+/* Recessed select (a slot you choose from) */
+.mc-select {
+  font-family: var(--font-data, monospace);
+  font-size: 13px;
+  color: #f0ece2;
+  background-color: var(--slot-deep);
+  border: 2px solid var(--outline);
+  box-shadow: inset 2px 2px 0 0 rgba(0, 0, 0, 0.35),
+    inset -2px -2px 0 0 rgba(255, 255, 255, 0.1);
+  border-radius: 0;
+  outline: none;
+  padding: 9px 30px 9px 12px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23cfc8b8'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.mc-select:focus {
+  box-shadow: inset 2px 2px 0 0 rgba(0, 0, 0, 0.35),
+    inset -2px -2px 0 0 rgba(255, 255, 255, 0.1), 0 0 0 2px var(--grass);
+}
+
+/* Read-only value rendered as a recessed slot (copyable) */
+.mc-value {
+  font-family: var(--font-data, monospace);
+  font-size: 13px;
+  padding: 9px 12px;
+  color: #ece7db;
+  background-color: var(--slot-deep);
+  border: 2px solid var(--outline);
+  box-shadow: inset 2px 2px 0 0 rgba(0, 0, 0, 0.3),
+    inset -2px -2px 0 0 rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  word-break: break-all;
+  user-select: text;
+}
+
+/* Inline note panel */
+.mc-note {
+  padding: 11px 14px;
+  background-color: var(--panel-hi);
+  border: 2px solid var(--outline);
+  box-shadow: inset 0 0 0 0 transparent, -4px 0 0 0 var(--gold);
+  border-left-width: 2px;
+  font-size: 12.5px;
+  font-family: var(--font-data, monospace);
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+/* Data table on sandstone */
+.mc-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.mc-table th {
+  text-align: left;
+  padding: 10px 16px;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  color: var(--ink-mute);
+  border-bottom: 2px solid var(--bevel-lo);
+  background-color: rgba(0, 0, 0, 0.05);
+  white-space: nowrap;
+}
+.mc-table td {
+  padding: 12px 16px;
+  font-family: var(--font-data, monospace);
+  font-size: 12.5px;
+  color: var(--ink);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+}
+.mc-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.mc-table tbody tr:hover td {
+  background-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Small pixel status chip */
+.mc-chip {
+  display: inline-block;
+  padding: 3px 8px 2px;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  border: 2px solid var(--outline);
+  color: var(--ink);
+}
+
 @keyframes mc-pulse {
   0%,
   100% {
