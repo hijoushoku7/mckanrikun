@@ -4,14 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "@/components/Toast";
-import { StatusBadge } from "@/components/StatusBadge";
+import { PingBars, LoaderBlock, loaderLabel } from "@/components/PingBars";
 import { Spinner } from "@/components/Spinner";
-import {
-  ApiError,
-  listServers,
-  controlServer,
-  deleteServer,
-} from "@/lib/api";
+import { ApiError, listServers, controlServer, deleteServer } from "@/lib/api";
 import type { Server } from "@/lib/types";
 
 // ──────────────────────────────────────────────
@@ -26,22 +21,18 @@ function formatTime(d: Date): string {
   });
 }
 
-const actionBtnStyle = (
-  color: string,
-  disabled: boolean
-): React.CSSProperties => ({
-  padding: "4px 10px",
-  fontSize: "12px",
-  fontFamily: "var(--font-mono)",
-  backgroundColor: "transparent",
-  border: `1px solid ${disabled ? "var(--color-border-muted)" : color}`,
-  borderRadius: "4px",
-  color: disabled ? "var(--color-text-muted)" : color,
-  cursor: disabled ? "not-allowed" : "pointer",
-  transition: "opacity 0.15s",
-  opacity: disabled ? 0.5 : 1,
-  whiteSpace: "nowrap" as const,
-});
+const eyebrow: React.CSSProperties = {
+  fontFamily: "var(--font-pixel)",
+  fontSize: 9,
+  letterSpacing: "0.1em",
+  color: "var(--ink-mute)",
+};
+
+const metaText: React.CSSProperties = {
+  fontFamily: "var(--font-data)",
+  fontSize: 12,
+  color: "var(--ink-soft)",
+};
 
 // ──────────────────────────────────────────────
 // Page
@@ -49,8 +40,7 @@ const actionBtnStyle = (
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const canOperate =
-    user?.role === "admin" || user?.role === "operator";
+  const canOperate = user?.role === "admin" || user?.role === "operator";
 
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +48,6 @@ export default function DashboardPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
-  // 初回ロード済みかを ref で追跡(useCallback の依存に loading を入れず済む)
   const initialLoadDone = useRef(false);
 
   const fetchServers = useCallback(async (manual = false) => {
@@ -73,7 +62,6 @@ export default function DashboardPage() {
         err instanceof ApiError
           ? `サーバー一覧の取得に失敗しました: ${err.message}`
           : "サーバー一覧の取得に失敗しました。";
-      // 初回ロードが終わっていない場合はインライン表示、以降はトースト
       if (!initialLoadDone.current) {
         setFetchError(msg);
       } else {
@@ -91,7 +79,7 @@ export default function DashboardPage() {
     void fetchServers();
   }, [fetchServers]);
 
-  // Polling every 10 s (silent — errors go to toast, not blocking)
+  // Polling every 10 s (silent — errors go to toast)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     pollRef.current = setInterval(() => {
@@ -156,9 +144,7 @@ export default function DashboardPage() {
 
   async function handleDelete(server: Server) {
     if (
-      !window.confirm(
-        `「${server.name}」を削除しますか？この操作は元に戻せません。`
-      )
+      !window.confirm(`「${server.name}」を削除しますか？この操作は元に戻せません。`)
     )
       return;
     setActionId(server.id);
@@ -180,52 +166,45 @@ export default function DashboardPage() {
   }
 
   return (
-    <div>
+    <div style={{ maxWidth: 1000, margin: "0 auto" }}>
       {/* Page header */}
       <div
         style={{
-          marginBottom: "32px",
-          paddingBottom: "20px",
-          borderBottom: "1px solid var(--color-border)",
+          marginBottom: 24,
           display: "flex",
-          alignItems: "flex-start",
+          alignItems: "flex-end",
           justifyContent: "space-between",
-          gap: "16px",
+          gap: 16,
+          flexWrap: "wrap",
         }}
       >
         <div>
+          <div style={eyebrow}>SELECT SERVER</div>
           <h1
             style={{
-              margin: 0,
-              fontSize: "20px",
-              fontWeight: 600,
-              color: "var(--color-text-primary)",
-              letterSpacing: "-0.01em",
+              margin: "8px 0 4px",
+              fontSize: 30,
+              fontWeight: 800,
+              letterSpacing: "-0.015em",
+              color: "var(--ink)",
             }}
           >
-            Minecraft Servers
+            Minecraft サーバー
           </h1>
-          <p
-            style={{
-              margin: "6px 0 0",
-              fontSize: "13px",
-              color: "var(--color-text-secondary)",
-            }}
-          >
+          <p style={{ margin: 0, fontSize: 13.5, color: "var(--ink-soft)" }}>
             登録済みサーバーの状態確認と操作
           </p>
         </div>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          {/* 最終更新時刻 + 更新中インジケータ */}
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {lastUpdated && (
             <span
               style={{
-                fontSize: "11px",
-                fontFamily: "var(--font-mono)",
-                color: "var(--color-text-muted)",
+                fontFamily: "var(--font-data)",
+                fontSize: 11,
+                color: "var(--ink-mute)",
                 display: "flex",
                 alignItems: "center",
-                gap: "6px",
+                gap: 6,
               }}
             >
               {refreshing && <Spinner size={12} />}
@@ -233,478 +212,259 @@ export default function DashboardPage() {
             </span>
           )}
           <button
+            type="button"
+            className="mc-btn"
             onClick={() => void fetchServers(true)}
             disabled={refreshing || loading}
             aria-label="サーバー一覧を更新"
-            style={{
-              padding: "7px 14px",
-              fontSize: "12px",
-              fontFamily: "var(--font-mono)",
-              backgroundColor: "transparent",
-              border: "1px solid var(--color-border-muted)",
-              borderRadius: "4px",
-              color: refreshing || loading ? "var(--color-text-muted)" : "var(--color-text-secondary)",
-              cursor: refreshing || loading ? "not-allowed" : "pointer",
-              opacity: refreshing || loading ? 0.6 : 1,
-              transition: "border-color 0.15s, color 0.15s, opacity 0.15s",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-            onMouseEnter={(e) => {
-              if (!refreshing && !loading) {
-                e.currentTarget.style.borderColor = "var(--color-accent)";
-                e.currentTarget.style.color = "var(--color-accent)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "var(--color-border-muted)";
-              e.currentTarget.style.color = refreshing || loading
-                ? "var(--color-text-muted)"
-                : "var(--color-text-secondary)";
-            }}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
           >
             {refreshing && <Spinner size={12} />}
             更新
           </button>
           {canOperate && (
-            <Link
-              href="/servers/new"
-              style={{
-                padding: "7px 16px",
-                fontSize: "12px",
-                fontFamily: "var(--font-mono)",
-                fontWeight: 600,
-                backgroundColor: "var(--color-accent)",
-                color: "#0d1117",
-                border: "none",
-                borderRadius: "4px",
-                textDecoration: "none",
-                display: "inline-block",
-                transition: "opacity 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = "0.85";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = "1";
-              }}
-            >
-              + 新規サーバー作成
+            <Link href="/servers/new" className="mc-btn mc-btn--grass">
+              ＋ 新規サーバー
             </Link>
           )}
         </div>
       </div>
 
-      {/* Server list */}
-      <div
-        style={{
-          backgroundColor: "var(--color-bg-card)",
-          border: "1px solid var(--color-border)",
-          borderRadius: "8px",
-          overflow: "hidden",
-        }}
-      >
+      {/* Server list — styled as the Minecraft multiplayer screen */}
+      <div className="mc-panel" style={{ overflow: "hidden" }}>
         <div
           style={{
-            padding: "16px 24px",
-            borderBottom: "1px solid var(--color-border)",
+            padding: "12px 18px",
+            borderBottom: "2px solid var(--bevel-lo)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
           }}
         >
-          <h2
-            style={{
-              margin: 0,
-              fontSize: "13px",
-              fontFamily: "var(--font-mono)",
-              fontWeight: 600,
-              color: "var(--color-text-secondary)",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-            }}
-          >
-            Servers
-          </h2>
-          <span
-            style={{
-              fontSize: "11px",
-              fontFamily: "var(--font-mono)",
-              color: "var(--color-text-muted)",
-            }}
-          >
-            {servers.length} total
+          <span style={eyebrow}>SERVERS</span>
+          <span style={{ ...eyebrow, color: "var(--ink-soft)" }}>
+            {servers.length} 件
           </span>
         </div>
 
         {loading ? (
           <div
             style={{
-              padding: "48px",
-              textAlign: "center",
+              padding: 56,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: "12px",
-              color: "var(--color-text-secondary)",
-              fontSize: "13px",
-              fontFamily: "var(--font-mono)",
+              gap: 12,
+              color: "var(--ink-soft)",
+              fontFamily: "var(--font-data)",
+              fontSize: 13,
             }}
           >
             <Spinner size={24} />
             <span>読み込み中…</span>
           </div>
         ) : fetchError ? (
-          /* 初回取得失敗 */
-          <div
-            style={{
-              padding: "40px 32px",
-              textAlign: "center",
-            }}
-          >
+          <div style={{ padding: "44px 32px", textAlign: "center" }}>
             <p
               style={{
                 margin: "0 0 16px",
-                fontSize: "13px",
-                fontFamily: "var(--font-mono)",
-                color: "var(--color-danger)",
+                fontFamily: "var(--font-data)",
+                fontSize: 13,
+                color: "var(--redstone)",
               }}
             >
               {fetchError}
             </p>
             <button
+              type="button"
+              className="mc-btn mc-btn--redstone"
               onClick={() => {
                 setFetchError(null);
                 initialLoadDone.current = false;
                 setLoading(true);
                 void fetchServers();
               }}
-              style={{
-                padding: "7px 18px",
-                fontSize: "12px",
-                fontFamily: "var(--font-mono)",
-                backgroundColor: "transparent",
-                border: "1px solid var(--color-danger)",
-                borderRadius: "4px",
-                color: "var(--color-danger)",
-                cursor: "pointer",
-              }}
             >
               再試行
             </button>
           </div>
         ) : servers.length === 0 ? (
-          <div
-            style={{
-              padding: "64px 32px",
-              textAlign: "center",
-            }}
-          >
+          <div style={{ padding: "64px 32px", textAlign: "center" }}>
             <div
               style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "28px",
-                color: "var(--color-border-muted)",
-                letterSpacing: "0.05em",
-                marginBottom: "12px",
-                userSelect: "none",
+                display: "inline-flex",
+                gap: 6,
+                marginBottom: 16,
               }}
+              aria-hidden
             >
-              ▪ ▪ ▪
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  style={{
+                    width: 16,
+                    height: 16,
+                    backgroundColor: "var(--slot)",
+                    border: "2px solid var(--outline)",
+                  }}
+                />
+              ))}
             </div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: "14px",
-                color: "var(--color-text-secondary)",
-              }}
-            >
+            <p style={{ margin: 0, fontSize: 14, color: "var(--ink)" }}>
               サーバーがありません
             </p>
             {canOperate && (
-              <p style={{ margin: "8px 0 0", fontSize: "13px", color: "var(--color-text-muted)" }}>
-                右上の「新規サーバー作成」から追加できます。
+              <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--ink-soft)" }}>
+                右上の「新規サーバー」から追加できます。
               </p>
             )}
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "13px",
-              }}
-            >
-              <thead>
-                <tr
+          <div>
+            {servers.map((server, idx) => {
+              const busy = actionId === server.id;
+              const isRunning = server.liveStatus === "running";
+              const isStopped = server.liveStatus === "stopped";
+              return (
+                <div
+                  key={server.id}
+                  className="server-row"
                   style={{
-                    borderBottom: "1px solid var(--color-border)",
-                    backgroundColor: "var(--color-bg-elevated)",
+                    padding: "14px 18px",
+                    borderBottom:
+                      idx < servers.length - 1 ? "2px solid var(--bevel-lo)" : "none",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 16,
+                    flexWrap: "wrap",
+                    opacity: busy ? 0.65 : 1,
                   }}
                 >
-                  {[
-                    "名前",
-                    "状態",
-                    "ローダー / バージョン",
-                    "ポート",
-                    "メモリ",
-                    ...(canOperate ? ["操作"] : []),
-                  ].map((h) => (
-                    <th
-                      key={h}
+                  <LoaderBlock loader={server.loaderType} />
+
+                  {/* Identity */}
+                  <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+                    <div
                       style={{
-                        padding: "10px 16px",
-                        textAlign: "left",
-                        fontSize: "11px",
-                        fontFamily: "var(--font-mono)",
-                        fontWeight: 600,
-                        color: "var(--color-text-muted)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.08em",
-                        whiteSpace: "nowrap",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginBottom: 4,
                       }}
                     >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {servers.map((server, idx) => {
-                  const busy = actionId === server.id;
-                  const isRunning = server.liveStatus === "running";
-                  const isStopped = server.liveStatus === "stopped";
-                  return (
-                    <tr
-                      key={server.id}
+                      <Link
+                        href={`/servers/${server.id}/console`}
+                        title="コンソールを開く"
+                        style={{
+                          fontSize: 17,
+                          fontWeight: 800,
+                          color: "var(--ink)",
+                          textDecoration: "none",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = "var(--grass-lo)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = "var(--ink)";
+                        }}
+                      >
+                        {server.name}
+                      </Link>
+                      {busy && <Spinner size={12} />}
+                    </div>
+                    <div
                       style={{
-                        borderBottom:
-                          idx < servers.length - 1
-                            ? "1px solid var(--color-border)"
-                            : "none",
-                        opacity: busy ? 0.7 : 1,
-                        transition: "opacity 0.15s",
+                        ...metaText,
+                        display: "flex",
+                        gap: 14,
+                        flexWrap: "wrap",
                       }}
                     >
-                      {/* Name */}
-                      <td
+                      <span>
+                        <span style={{ color: "var(--ink)" }}>
+                          {loaderLabel(server.loaderType)}
+                        </span>{" "}
+                        {server.mcVersion}
+                        {server.loaderVersion ? ` / ${server.loaderVersion}` : ""}
+                      </span>
+                      <span>
+                        :
+                        <span style={{ color: "var(--ink)" }}>{server.gamePort}</span>
+                        <span style={{ color: "var(--ink-mute)" }}> · rcon </span>
+                        <span style={{ color: "var(--ink)" }}>{server.rconPort}</span>
+                      </span>
+                      <span>
+                        <span style={{ color: "var(--ink)" }}>
+                          {server.memoryMb.toLocaleString()}
+                        </span>{" "}
+                        MB
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Live status */}
+                  <PingBars status={server.liveStatus} />
+
+                  {/* Actions */}
+                  {canOperate && (
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className="mc-btn mc-btn--grass"
+                        style={{ fontSize: 12, padding: "6px 11px" }}
+                        disabled={busy || isRunning}
+                        onClick={() => void handleControl(server.id, "start")}
+                        aria-label={`${server.name} を起動`}
+                      >
+                        起動
+                      </button>
+                      <button
+                        type="button"
+                        className="mc-btn mc-btn--gold"
+                        style={{ fontSize: 12, padding: "6px 11px" }}
+                        disabled={busy || isStopped}
+                        onClick={() => void handleControl(server.id, "stop")}
+                        aria-label={`${server.name} を停止`}
+                      >
+                        停止
+                      </button>
+                      <button
+                        type="button"
+                        className="mc-btn"
+                        style={{ fontSize: 12, padding: "6px 11px" }}
+                        disabled={busy || isStopped}
+                        onClick={() => void handleControl(server.id, "restart")}
+                        aria-label={`${server.name} を再起動`}
+                      >
+                        再起動
+                      </button>
+                      <Link
+                        href={`/servers/${server.id}/settings`}
+                        className="mc-btn"
                         style={{
-                          padding: "14px 16px",
-                          fontFamily: "var(--font-mono)",
-                          fontWeight: 600,
-                          whiteSpace: "nowrap",
+                          fontSize: 12,
+                          padding: "6px 11px",
+                          pointerEvents: busy ? "none" : "auto",
+                          opacity: busy ? 0.45 : 1,
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <Link
-                            href={`/servers/${server.id}/console`}
-                            style={{
-                              color: "var(--color-accent)",
-                              textDecoration: "none",
-                            }}
-                            title="コンソールを開く"
-                          >
-                            {server.name}
-                          </Link>
-                          {busy && <Spinner size={12} />}
-                        </div>
-                      </td>
-
-                      {/* Status badge */}
-                      <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-                        <StatusBadge status={server.liveStatus} />
-                      </td>
-
-                      {/* Loader / version */}
-                      <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-                        <span
-                          style={{
-                            fontFamily: "var(--font-mono)",
-                            fontSize: "12px",
-                            color: "var(--color-text-primary)",
-                          }}
-                        >
-                          {server.loaderType}
-                        </span>
-                        <span
-                          style={{
-                            marginLeft: "6px",
-                            fontFamily: "var(--font-mono)",
-                            fontSize: "12px",
-                            color: "var(--color-text-secondary)",
-                          }}
-                        >
-                          {server.mcVersion}
-                          {server.loaderVersion
-                            ? ` / ${server.loaderVersion}`
-                            : ""}
-                        </span>
-                      </td>
-
-                      {/* Ports */}
-                      <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-                        <span
-                          style={{
-                            fontFamily: "var(--font-mono)",
-                            fontSize: "12px",
-                            color: "var(--color-text-secondary)",
-                          }}
-                        >
-                          Game{" "}
-                          <span style={{ color: "var(--color-text-primary)" }}>
-                            {server.gamePort}
-                          </span>
-                          {" / "}RCON{" "}
-                          <span style={{ color: "var(--color-text-primary)" }}>
-                            {server.rconPort}
-                          </span>
-                        </span>
-                      </td>
-
-                      {/* Memory */}
-                      <td
-                        style={{
-                          padding: "14px 16px",
-                          fontFamily: "var(--font-mono)",
-                          fontSize: "12px",
-                          color: "var(--color-text-secondary)",
-                          whiteSpace: "nowrap",
-                        }}
+                        設定
+                      </Link>
+                      <button
+                        type="button"
+                        className="mc-btn mc-btn--redstone"
+                        style={{ fontSize: 12, padding: "6px 11px" }}
+                        disabled={busy}
+                        onClick={() => void handleDelete(server)}
+                        aria-label={`${server.name} を削除`}
                       >
-                        {server.memoryMb.toLocaleString()} MB
-                      </td>
-
-                      {/* Actions */}
-                      {canOperate && (
-                        <td style={{ padding: "14px 16px" }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: "6px",
-                              alignItems: "center",
-                            }}
-                          >
-                            <button
-                              disabled={busy || isRunning}
-                              onClick={() => void handleControl(server.id, "start")}
-                              aria-label={`${server.name} を起動`}
-                              style={actionBtnStyle(
-                                "var(--color-success)",
-                                busy || isRunning
-                              )}
-                            >
-                              起動
-                            </button>
-                            <button
-                              disabled={busy || isStopped}
-                              onClick={() => void handleControl(server.id, "stop")}
-                              aria-label={`${server.name} を停止`}
-                              style={actionBtnStyle(
-                                "var(--color-warning)",
-                                busy || isStopped
-                              )}
-                            >
-                              停止
-                            </button>
-                            <button
-                              disabled={busy || isStopped}
-                              onClick={() =>
-                                void handleControl(server.id, "restart")
-                              }
-                              aria-label={`${server.name} を再起動`}
-                              style={actionBtnStyle(
-                                "var(--color-accent)",
-                                busy || isStopped
-                              )}
-                            >
-                              再起動
-                            </button>
-                            <Link
-                              href={`/servers/${server.id}/console`}
-                              style={{
-                                ...actionBtnStyle(
-                                  "var(--color-text-secondary)",
-                                  busy
-                                ),
-                                textDecoration: "none",
-                                display: "inline-block",
-                                pointerEvents: busy ? "none" : "auto",
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!busy) {
-                                  e.currentTarget.style.borderColor =
-                                    "var(--color-text-secondary)";
-                                  e.currentTarget.style.color =
-                                    "var(--color-text-primary)";
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor =
-                                  "var(--color-border-muted)";
-                                e.currentTarget.style.color =
-                                  "var(--color-text-secondary)";
-                              }}
-                            >
-                              コンソール
-                            </Link>
-                            <Link
-                              href={`/servers/${server.id}/settings`}
-                              style={{
-                                ...actionBtnStyle(
-                                  "var(--color-text-secondary)",
-                                  busy
-                                ),
-                                textDecoration: "none",
-                                display: "inline-block",
-                                pointerEvents: busy ? "none" : "auto",
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!busy) {
-                                  e.currentTarget.style.borderColor =
-                                    "var(--color-text-secondary)";
-                                  e.currentTarget.style.color =
-                                    "var(--color-text-primary)";
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor =
-                                  "var(--color-border-muted)";
-                                e.currentTarget.style.color =
-                                  "var(--color-text-secondary)";
-                              }}
-                            >
-                              設定
-                            </Link>
-                            <button
-                              disabled={busy}
-                              onClick={() => void handleDelete(server)}
-                              aria-label={`${server.name} を削除`}
-                              style={actionBtnStyle(
-                                "var(--color-danger)",
-                                busy
-                              )}
-                              onMouseEnter={(e) => {
-                                if (!busy)
-                                  e.currentTarget.style.backgroundColor =
-                                    "#3a1a1a";
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor =
-                                  "transparent";
-                              }}
-                            >
-                              削除
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        削除
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

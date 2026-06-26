@@ -3,10 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AuthGuard } from "@/components/AuthGuard";
-import { Sidebar } from "@/components/Sidebar";
+import { AppShell } from "@/components/AppShell";
+import { Panel } from "@/components/mc";
+import { PingBars } from "@/components/PingBars";
 import { toast } from "@/components/Toast";
-import { StatusBadge } from "@/components/StatusBadge";
 import { Spinner } from "@/components/Spinner";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -21,74 +21,47 @@ import {
 import type { Server, PropertyField, FtpInfo } from "@/lib/types";
 
 // ──────────────────────────────────────────────
-// Style constants
+// Shared bits
 // ──────────────────────────────────────────────
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "8px 10px",
-  fontSize: "13px",
-  fontFamily: "var(--font-mono)",
-  backgroundColor: "var(--color-bg-base)",
-  border: "1px solid var(--color-border-muted)",
-  borderRadius: "4px",
-  color: "var(--color-text-primary)",
-  outline: "none",
-  boxSizing: "border-box",
-};
-
-const readonlyInputStyle: React.CSSProperties = {
-  ...inputStyle,
-  backgroundColor: "var(--color-bg-elevated)",
-  color: "var(--color-text-secondary)",
-  cursor: "default",
-};
-
-const selectStyle: React.CSSProperties = {
-  ...inputStyle,
-  cursor: "pointer",
-  appearance: "none" as React.CSSProperties["appearance"],
-  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b949e'/%3E%3C/svg%3E")`,
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "right 10px center",
-  paddingRight: "28px",
-};
-
-const labelStyle: React.CSSProperties = {
+const fieldLabel: React.CSSProperties = {
   display: "block",
-  fontSize: "11px",
-  fontFamily: "var(--font-mono)",
-  fontWeight: 600,
-  textTransform: "uppercase" as const,
-  letterSpacing: "0.08em",
-  color: "var(--color-text-secondary)",
-  marginBottom: "6px",
+  fontFamily: "var(--font-pixel)",
+  fontSize: 9,
+  letterSpacing: "0.07em",
+  color: "var(--ink-soft)",
+  marginBottom: 7,
 };
-
-// ──────────────────────────────────────────────
-// RestartBadge
-// ──────────────────────────────────────────────
 
 function RestartBadge() {
   return (
     <span
-      style={{
-        display: "inline-block",
-        marginLeft: "6px",
-        padding: "1px 6px",
-        fontSize: "10px",
-        fontFamily: "var(--font-mono)",
-        fontWeight: 600,
-        borderRadius: "3px",
-        backgroundColor: "#3a2e10",
-        color: "var(--color-warning)",
-        border: "1px solid var(--color-warning)",
-        letterSpacing: "0.04em",
-        verticalAlign: "middle",
-      }}
+      className="mc-chip"
+      style={{ marginLeft: 6, borderColor: "var(--gold)", color: "var(--gold)", verticalAlign: "middle" }}
     >
       要再起動
     </span>
+  );
+}
+
+function LabeledValue({
+  label,
+  value,
+  color,
+  italic,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+  italic?: boolean;
+}) {
+  return (
+    <div>
+      <span style={fieldLabel}>{label}</span>
+      <div className="mc-value" style={{ color, fontStyle: italic ? "italic" : undefined }}>
+        {value}
+      </div>
+    </div>
   );
 }
 
@@ -103,16 +76,11 @@ interface PropertyFormFieldProps {
   onChange: (key: string, value: string) => void;
 }
 
-function PropertyFormField({
-  field,
-  value,
-  readonly,
-  onChange,
-}: PropertyFormFieldProps) {
+function PropertyFormField({ field, value, readonly, onChange }: PropertyFormFieldProps) {
   const { key, label, type, options, min, max, requiresRestart } = field;
 
-  const fieldLabel = (
-    <label style={labelStyle}>
+  const labelEl = (
+    <label style={fieldLabel}>
       {label}
       {requiresRestart && <RestartBadge />}
     </label>
@@ -122,12 +90,12 @@ function PropertyFormField({
     const checked = value === "true";
     return (
       <div>
-        {fieldLabel}
+        {labelEl}
         <label
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "10px",
+            gap: 10,
             cursor: readonly ? "default" : "pointer",
             userSelect: "none",
           }}
@@ -138,20 +106,18 @@ function PropertyFormField({
             disabled={readonly}
             onChange={(e) => onChange(key, e.target.checked ? "true" : "false")}
             style={{
-              width: "16px",
-              height: "16px",
+              width: 18,
+              height: 18,
               flexShrink: 0,
-              accentColor: "var(--color-accent)",
+              accentColor: "var(--grass)",
               cursor: readonly ? "default" : "pointer",
             }}
           />
           <span
             style={{
-              fontSize: "13px",
-              fontFamily: "var(--font-mono)",
-              color: checked
-                ? "var(--color-text-primary)"
-                : "var(--color-text-muted)",
+              fontSize: 13,
+              fontFamily: "var(--font-data)",
+              color: checked ? "var(--ink)" : "var(--ink-mute)",
             }}
           >
             {checked ? "有効 (true)" : "無効 (false)"}
@@ -164,20 +130,15 @@ function PropertyFormField({
   if (type === "enum" && options) {
     return (
       <div>
-        {fieldLabel}
+        {labelEl}
         {readonly ? (
-          <div style={readonlyInputStyle}>{value || "—"}</div>
+          <div className="mc-value">{value || "—"}</div>
         ) : (
           <select
+            className="mc-select"
             value={value}
             onChange={(e) => onChange(key, e.target.value)}
-            style={selectStyle}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = "var(--color-accent)";
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = "var(--color-border-muted)";
-            }}
+            style={{ width: "100%" }}
           >
             {options.map((opt) => (
               <option key={opt} value={opt}>
@@ -193,31 +154,21 @@ function PropertyFormField({
   if (type === "int") {
     return (
       <div>
-        {fieldLabel}
-        <input
-          type="number"
-          value={value}
-          disabled={readonly}
-          min={min}
-          max={max}
-          onChange={(e) => onChange(key, e.target.value)}
-          style={readonly ? readonlyInputStyle : inputStyle}
-          onFocus={(e) => {
-            if (!readonly)
-              e.currentTarget.style.borderColor = "var(--color-accent)";
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = "var(--color-border-muted)";
-          }}
-        />
+        {labelEl}
+        {readonly ? (
+          <div className="mc-value">{value || "—"}</div>
+        ) : (
+          <input
+            type="number"
+            className="mc-input"
+            value={value}
+            min={min}
+            max={max}
+            onChange={(e) => onChange(key, e.target.value)}
+          />
+        )}
         {(min !== undefined || max !== undefined) && !readonly && (
-          <p
-            style={{
-              margin: "4px 0 0",
-              fontSize: "11px",
-              color: "var(--color-text-muted)",
-            }}
-          >
+          <p style={{ margin: "5px 0 0", fontSize: 11, color: "var(--ink-mute)", fontFamily: "var(--font-data)" }}>
             {min !== undefined && max !== undefined
               ? `${min} 〜 ${max}`
               : min !== undefined
@@ -232,21 +183,17 @@ function PropertyFormField({
   // string (default)
   return (
     <div>
-      {fieldLabel}
-      <input
-        type="text"
-        value={value}
-        disabled={readonly}
-        onChange={(e) => onChange(key, e.target.value)}
-        style={readonly ? readonlyInputStyle : inputStyle}
-        onFocus={(e) => {
-          if (!readonly)
-            e.currentTarget.style.borderColor = "var(--color-accent)";
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.borderColor = "var(--color-border-muted)";
-        }}
-      />
+      {labelEl}
+      {readonly ? (
+        <div className="mc-value">{value || "—"}</div>
+      ) : (
+        <input
+          type="text"
+          className="mc-input"
+          value={value}
+          onChange={(e) => onChange(key, e.target.value)}
+        />
+      )}
     </div>
   );
 }
@@ -257,21 +204,9 @@ function PropertyFormField({
 
 export default function SettingsPage() {
   return (
-    <AuthGuard>
-      <div style={{ display: "flex", minHeight: "100dvh" }}>
-        <Sidebar />
-        <main
-          style={{
-            flex: 1,
-            padding: "32px",
-            overflowY: "auto",
-            backgroundColor: "var(--color-bg-base)",
-          }}
-        >
-          <SettingsContent />
-        </main>
-      </div>
-    </AuthGuard>
+    <AppShell>
+      <SettingsContent />
+    </AppShell>
   );
 }
 
@@ -293,7 +228,6 @@ function SettingsContent() {
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [propsLoading, setPropsLoading] = useState(true);
   const [propsError, setPropsError] = useState<string | null>(null);
-  // 409: server.properties 未生成
   const [notReady, setNotReady] = useState(false);
 
   // Save state (properties)
@@ -302,9 +236,7 @@ function SettingsContent() {
   const [restartKeys, setRestartKeys] = useState<string[]>([]);
 
   // Validation errors: key -> message
-  const [validationErrors, setValidationErrors] = useState<
-    Record<string, string>
-  >({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // FTP state
   const [ftpInfo, setFtpInfo] = useState<FtpInfo | null>(null);
@@ -376,7 +308,6 @@ function SettingsContent() {
     try {
       const data = await getServerProperties(id);
       setFields(data.fields);
-      // Initialize form values from API response; fill missing keys with ""
       const initial: Record<string, string> = {};
       for (const f of data.fields) {
         initial[f.key] = data.values[f.key] ?? "";
@@ -404,7 +335,6 @@ function SettingsContent() {
   // ── Field change handler ──
   function handleChange(key: string, value: string) {
     setFormValues((prev) => ({ ...prev, [key]: value }));
-    // Clear validation error for this key when user edits
     if (validationErrors[key]) {
       setValidationErrors((prev) => {
         const next = { ...prev };
@@ -420,7 +350,7 @@ function SettingsContent() {
     for (const f of fields) {
       const raw = formValues[f.key] ?? "";
       if (f.type === "int") {
-        if (raw === "") continue; // Allow empty (server decides default)
+        if (raw === "") continue;
         const num = Number(raw);
         if (!Number.isInteger(num) || isNaN(num)) {
           errors[f.key] = "整数を入力してください。";
@@ -448,7 +378,6 @@ function SettingsContent() {
     setSaveError(null);
     setRestartKeys([]);
 
-    // Build updates: convert types appropriately
     const updates: Record<string, string | number | boolean> = {};
     for (const f of fields) {
       const raw = formValues[f.key] ?? "";
@@ -458,7 +387,6 @@ function SettingsContent() {
         if (raw !== "") {
           updates[f.key] = parseInt(raw, 10);
         }
-        // Skip empty int fields
       } else {
         updates[f.key] = raw;
       }
@@ -468,7 +396,6 @@ function SettingsContent() {
       const result = await saveServerProperties(id, updates);
       setRestartKeys(result.requiresRestart);
       if (result.requiresRestart.length > 0) {
-        // Show restart notice inline and via toast
         const labels = result.requiresRestart
           .map((k) => fields.find((f) => f.key === k)?.label ?? k)
           .join(", ");
@@ -476,15 +403,12 @@ function SettingsContent() {
       } else {
         toast("設定を保存しました。", "success");
       }
-      // Refresh from server to reflect normalized values
       await fetchProperties();
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {
         setSaveError(`バリデーションエラー: ${err.message}`);
       } else if (err instanceof ApiError && err.status === 409) {
-        setSaveError(
-          "server.properties がまだ生成されていません。サーバーを一度起動してください。"
-        );
+        setSaveError("server.properties がまだ生成されていません。サーバーを一度起動してください。");
       } else if (err instanceof ApiError) {
         setSaveError(`保存に失敗しました: ${err.message}`);
       } else {
@@ -532,113 +456,68 @@ function SettingsContent() {
   // ──────────────────────────────────────────────
 
   return (
-    <div style={{ maxWidth: "720px" }}>
+    <div style={{ maxWidth: 760, margin: "0 auto" }}>
       {/* Page header */}
-      <div
-        style={{
-          marginBottom: "32px",
-          paddingBottom: "20px",
-          borderBottom: "1px solid var(--color-border)",
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: "16px",
-          flexWrap: "wrap",
-        }}
-      >
+      <div style={{ marginBottom: 24, display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <div>
           {/* Breadcrumb */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "6px",
-              marginBottom: "8px",
-              fontSize: "12px",
-              fontFamily: "var(--font-mono)",
-              color: "var(--color-text-muted)",
+              gap: 6,
+              marginBottom: 8,
+              fontSize: 12,
+              fontFamily: "var(--font-data)",
+              color: "var(--ink-mute)",
             }}
           >
-            <Link
-              href="/"
-              style={{
-                color: "var(--color-text-secondary)",
-                textDecoration: "none",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "var(--color-accent)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "var(--color-text-secondary)";
-              }}
-            >
-              Dashboard
+            <Link href="/" className="mc-link" style={{ fontWeight: 400 }}>
+              ダッシュボード
             </Link>
             <span>/</span>
             {server ? (
               <>
-                <Link
-                  href={`/servers/${id}/console`}
-                  style={{
-                    color: "var(--color-text-secondary)",
-                    textDecoration: "none",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "var(--color-accent)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color =
-                      "var(--color-text-secondary)";
-                  }}
-                >
+                <Link href={`/servers/${id}/console`} className="mc-link" style={{ fontWeight: 400 }}>
                   {server.name}
                 </Link>
                 <span>/</span>
               </>
             ) : null}
-            <span>Settings</span>
+            <span>設定</span>
           </div>
 
           {/* Title */}
           <h1
             style={{
               margin: 0,
-              fontSize: "20px",
-              fontWeight: 600,
-              color: "var(--color-text-primary)",
-              letterSpacing: "-0.01em",
+              fontSize: 28,
+              fontWeight: 800,
+              color: "var(--ink)",
+              letterSpacing: "-0.015em",
               display: "flex",
               alignItems: "center",
-              gap: "12px",
+              gap: 14,
               flexWrap: "wrap",
             }}
           >
             {serverLoading ? (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "var(--color-text-muted)" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--ink-mute)" }}>
                 <Spinner size={16} />
                 読み込み中…
               </span>
             ) : server ? (
               <>
                 <span>{server.name}</span>
-                <StatusBadge status={server.liveStatus} />
+                <PingBars status={server.liveStatus} />
               </>
             ) : (
-              <span style={{ color: "var(--color-danger)" }}>
-                サーバーが見つかりません
-              </span>
+              <span style={{ color: "var(--redstone)" }}>サーバーが見つかりません</span>
             )}
           </h1>
 
           {server && (
-            <p
-              style={{
-                margin: "6px 0 0",
-                fontSize: "13px",
-                color: "var(--color-text-secondary)",
-                fontFamily: "var(--font-mono)",
-              }}
-            >
+            <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--ink-soft)", fontFamily: "var(--font-data)" }}>
               {server.loaderType} {server.mcVersion}
               {server.loaderVersion ? ` / ${server.loaderVersion}` : ""}
               {"  ·  "}Game :{server.gamePort} · RCON :{server.rconPort}
@@ -646,32 +525,8 @@ function SettingsContent() {
           )}
         </div>
 
-        {/* Navigation to console */}
         {server && (
-          <Link
-            href={`/servers/${id}/console`}
-            style={{
-              padding: "7px 14px",
-              fontSize: "12px",
-              fontFamily: "var(--font-mono)",
-              backgroundColor: "transparent",
-              border: "1px solid var(--color-border-muted)",
-              borderRadius: "4px",
-              color: "var(--color-text-secondary)",
-              textDecoration: "none",
-              display: "inline-block",
-              transition: "border-color 0.15s, color 0.15s",
-              whiteSpace: "nowrap",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "var(--color-accent)";
-              e.currentTarget.style.color = "var(--color-accent)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "var(--color-border-muted)";
-              e.currentTarget.style.color = "var(--color-text-secondary)";
-            }}
-          >
+          <Link href={`/servers/${id}/console`} className="mc-btn">
             コンソール →
           </Link>
         )}
@@ -679,233 +534,79 @@ function SettingsContent() {
 
       {/* Body */}
       {propsLoading ? (
-        <div
-          style={{
-            padding: "48px",
-            textAlign: "center",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "12px",
-            color: "var(--color-text-secondary)",
-            fontSize: "13px",
-            fontFamily: "var(--font-mono)",
-          }}
-        >
-          <Spinner size={24} />
-          設定を読み込み中…
-        </div>
-      ) : notReady ? (
-        /* 409: server.properties 未生成 */
-        <div
-          style={{
-            backgroundColor: "var(--color-bg-card)",
-            border: "1px solid var(--color-border)",
-            borderRadius: "8px",
-            padding: "40px 32px",
-            textAlign: "center",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "28px",
-              color: "var(--color-border-muted)",
-              marginBottom: "16px",
-              userSelect: "none",
-            }}
-          >
-            ▪ ▪ ▪
+        <Panel>
+          <div style={{ padding: 48, display: "flex", flexDirection: "column", alignItems: "center", gap: 12, color: "var(--ink-soft)", fontFamily: "var(--font-data)", fontSize: 13 }}>
+            <Spinner size={24} />
+            設定を読み込み中…
           </div>
-          <p
-            style={{
-              margin: "0 0 8px",
-              fontSize: "14px",
-              color: "var(--color-text-primary)",
-              fontWeight: 600,
-            }}
-          >
-            server.properties がまだ生成されていません
-          </p>
-          <p
-            style={{
-              margin: 0,
-              fontSize: "13px",
-              color: "var(--color-text-secondary)",
-              lineHeight: "1.7",
-            }}
-          >
-            サーバーを一度起動すると server.properties が生成され、
-            <br />
-            設定を編集できるようになります。
-          </p>
-          {server && (
-            <div style={{ marginTop: "20px" }}>
-              <Link
-                href="/"
-                style={{
-                  padding: "8px 18px",
-                  fontSize: "13px",
-                  fontFamily: "var(--font-mono)",
-                  backgroundColor: "transparent",
-                  border: "1px solid var(--color-border-muted)",
-                  borderRadius: "4px",
-                  color: "var(--color-text-secondary)",
-                  textDecoration: "none",
-                  display: "inline-block",
-                  transition: "border-color 0.15s, color 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "var(--color-accent)";
-                  e.currentTarget.style.color = "var(--color-accent)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor =
-                    "var(--color-border-muted)";
-                  e.currentTarget.style.color = "var(--color-text-secondary)";
-                }}
-              >
+        </Panel>
+      ) : notReady ? (
+        <Panel>
+          <div style={{ padding: "44px 32px", textAlign: "center" }}>
+            <div style={{ display: "inline-flex", gap: 6, marginBottom: 16 }} aria-hidden>
+              {[0, 1, 2].map((i) => (
+                <span key={i} style={{ width: 16, height: 16, backgroundColor: "var(--slot)", border: "2px solid var(--outline)" }} />
+              ))}
+            </div>
+            <p style={{ margin: "0 0 8px", fontSize: 14, color: "var(--ink)", fontWeight: 700 }}>
+              server.properties がまだ生成されていません
+            </p>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7 }}>
+              サーバーを一度起動すると server.properties が生成され、
+              <br />
+              設定を編集できるようになります。
+            </p>
+            <div style={{ marginTop: 20 }}>
+              <Link href="/" className="mc-btn">
                 ダッシュボードに戻る
               </Link>
             </div>
-          )}
-        </div>
-      ) : propsError ? (
-        <div
-          style={{
-            padding: "24px",
-            backgroundColor: "#3a1a1a",
-            border: "1px solid var(--color-danger)",
-            borderRadius: "6px",
-            fontSize: "13px",
-            fontFamily: "var(--font-mono)",
-            color: "var(--color-danger)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-          }}
-        >
-          <span>{propsError}</span>
-          <div>
-            <button
-              onClick={() => void fetchProperties()}
-              style={{
-                padding: "6px 16px",
-                fontSize: "12px",
-                fontFamily: "var(--font-mono)",
-                backgroundColor: "transparent",
-                border: "1px solid var(--color-danger)",
-                borderRadius: "4px",
-                color: "var(--color-danger)",
-                cursor: "pointer",
-              }}
-            >
-              再試行
-            </button>
           </div>
-        </div>
+        </Panel>
+      ) : propsError ? (
+        <Panel padded>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, fontFamily: "var(--font-data)", fontSize: 13, color: "var(--redstone)" }}>
+            <span>{propsError}</span>
+            <div>
+              <button type="button" className="mc-btn mc-btn--redstone" onClick={() => void fetchProperties()}>
+                再試行
+              </button>
+            </div>
+          </div>
+        </Panel>
       ) : (
         /* Main form */
         <form onSubmit={(e) => void handleSave(e)}>
-          {/* viewer notice */}
           {!canOperate && (
-            <div
-              style={{
-                padding: "10px 16px",
-                marginBottom: "20px",
-                backgroundColor: "var(--color-bg-elevated)",
-                border: "1px solid var(--color-border-muted)",
-                borderRadius: "6px",
-                fontSize: "12px",
-                fontFamily: "var(--font-mono)",
-                color: "var(--color-text-muted)",
-              }}
-            >
+            <div className="mc-note" style={{ marginBottom: 20, boxShadow: "-4px 0 0 0 var(--ink-mute)" }}>
               閲覧専用モード — 設定の変更には operator 以上のロールが必要です。
             </div>
           )}
 
-          {/* Restart notice (after save) */}
           {restartKeys.length > 0 && (
-            <div
-              style={{
-                padding: "12px 16px",
-                marginBottom: "20px",
-                backgroundColor: "#3a2e10",
-                border: "1px solid var(--color-warning)",
-                borderRadius: "6px",
-                fontSize: "13px",
-                fontFamily: "var(--font-mono)",
-                color: "var(--color-warning)",
-              }}
-            >
+            <div className="mc-note" style={{ marginBottom: 20, color: "var(--ink)" }}>
               以下の項目は再起動後に反映されます:{" "}
-              {restartKeys
-                .map((k) => fields.find((f) => f.key === k)?.label ?? k)
-                .join(", ")}
+              {restartKeys.map((k) => fields.find((f) => f.key === k)?.label ?? k).join(", ")}
             </div>
           )}
 
-          {/* Save error */}
           {saveError && (
             <div
-              style={{
-                padding: "12px 16px",
-                marginBottom: "20px",
-                backgroundColor: "#3a1a1a",
-                border: "1px solid var(--color-danger)",
-                borderRadius: "6px",
-                fontSize: "13px",
-                fontFamily: "var(--font-mono)",
-                color: "var(--color-danger)",
-              }}
+              role="alert"
+              className="mc-slot"
+              style={{ padding: "12px 16px", marginBottom: 20, fontSize: 13, fontFamily: "var(--font-data)", color: "#ffd9d3", backgroundColor: "var(--redstone-lo)" }}
             >
               {saveError}
             </div>
           )}
 
-          {/* Properties card */}
-          <div
-            style={{
-              backgroundColor: "var(--color-bg-card)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "8px",
-              padding: "24px",
-              marginBottom: "24px",
-            }}
-          >
-            <h2
-              style={{
-                margin: "0 0 20px",
-                fontSize: "13px",
-                fontFamily: "var(--font-mono)",
-                fontWeight: 600,
-                color: "var(--color-text-secondary)",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-              }}
-            >
-              server.properties
-            </h2>
-
+          <Panel title="server.properties" padded style={{ marginBottom: 24 }}>
             {fields.length === 0 ? (
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "var(--color-text-muted)",
-                  fontFamily: "var(--font-mono)",
-                }}
-              >
+              <div style={{ fontSize: 13, color: "var(--ink-mute)", fontFamily: "var(--font-data)" }}>
                 設定項目がありません。
               </div>
             ) : (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-                  gap: "20px",
-                }}
-              >
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
                 {fields.map((field) => (
                   <div key={field.key}>
                     <PropertyFormField
@@ -915,14 +616,7 @@ function SettingsContent() {
                       onChange={handleChange}
                     />
                     {validationErrors[field.key] && (
-                      <p
-                        style={{
-                          margin: "4px 0 0",
-                          fontSize: "11px",
-                          color: "var(--color-danger)",
-                          fontFamily: "var(--font-mono)",
-                        }}
-                      >
+                      <p style={{ margin: "5px 0 0", fontSize: 11, color: "var(--redstone)", fontFamily: "var(--font-data)" }}>
                         {validationErrors[field.key]}
                       </p>
                     )}
@@ -930,56 +624,14 @@ function SettingsContent() {
                 ))}
               </div>
             )}
-          </div>
+          </Panel>
 
-          {/* Action buttons */}
           {canOperate && (
-            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-              <button
-                type="submit"
-                disabled={saving}
-                style={{
-                  padding: "10px 28px",
-                  fontSize: "13px",
-                  fontFamily: "var(--font-mono)",
-                  fontWeight: 600,
-                  backgroundColor: saving
-                    ? "var(--color-accent-dim)"
-                    : "var(--color-accent)",
-                  color: saving ? "var(--color-accent)" : "#0d1117",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: saving ? "not-allowed" : "pointer",
-                  transition: "opacity 0.15s",
-                }}
-              >
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <button type="submit" className="mc-btn mc-btn--grass" disabled={saving} style={{ padding: "11px 26px", fontSize: 14 }}>
                 {saving ? "保存中…" : "設定を保存"}
               </button>
-              <Link
-                href="/"
-                style={{
-                  padding: "10px 20px",
-                  fontSize: "13px",
-                  fontFamily: "var(--font-mono)",
-                  backgroundColor: "transparent",
-                  border: "1px solid var(--color-border-muted)",
-                  borderRadius: "4px",
-                  color: "var(--color-text-secondary)",
-                  textDecoration: "none",
-                  display: "inline-block",
-                  transition: "border-color 0.15s, color 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor =
-                    "var(--color-text-secondary)";
-                  e.currentTarget.style.color = "var(--color-text-primary)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor =
-                    "var(--color-border-muted)";
-                  e.currentTarget.style.color = "var(--color-text-secondary)";
-                }}
-              >
+              <Link href="/" className="mc-btn" style={{ padding: "11px 20px" }}>
                 ダッシュボードに戻る
               </Link>
             </div>
@@ -987,64 +639,21 @@ function SettingsContent() {
         </form>
       )}
 
-      {/* ── リソース (メモリ) セクション ── */}
-      <div
-        style={{
-          marginTop: "32px",
-          backgroundColor: "var(--color-bg-card)",
-          border: "1px solid var(--color-border)",
-          borderRadius: "8px",
-          padding: "24px",
-        }}
-      >
-        <h2
-          style={{
-            margin: "0 0 8px",
-            fontSize: "13px",
-            fontFamily: "var(--font-mono)",
-            fontWeight: 600,
-            color: "var(--color-text-secondary)",
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-          }}
-        >
-          リソース
-        </h2>
-        <p
-          style={{
-            margin: "0 0 20px",
-            fontSize: "12px",
-            color: "var(--color-warning)",
-            fontFamily: "var(--font-mono)",
-            backgroundColor: "#3a2e10",
-            padding: "8px 12px",
-            borderRadius: "4px",
-            border: "1px solid var(--color-warning)",
-          }}
-        >
+      {/* ── リソース (メモリ) ── */}
+      <Panel title="リソース" padded style={{ marginTop: 32 }}>
+        <div className="mc-note" style={{ marginBottom: 20, color: "var(--ink)" }}>
           メモリ変更はコンテナの再作成を伴い、一時的に停止します。
-        </p>
+        </div>
 
         <form onSubmit={(e) => void handleMemorySave(e)}>
-          <div style={{ marginBottom: "16px", maxWidth: "280px" }}>
-            <label
-              htmlFor="memoryInput"
-              style={{
-                display: "block",
-                fontSize: "11px",
-                fontFamily: "var(--font-mono)",
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                color: "var(--color-text-secondary)",
-                marginBottom: "6px",
-              }}
-            >
+          <div style={{ marginBottom: 16, maxWidth: 280 }}>
+            <label htmlFor="memoryInput" style={fieldLabel}>
               メモリ (MB)
             </label>
             <input
               id="memoryInput"
               type="number"
+              className="mc-input"
               min={512}
               max={65536}
               step={1}
@@ -1054,285 +663,59 @@ function SettingsContent() {
                 setMemoryInput(e.target.value);
                 setMemoryError(null);
               }}
-              style={{
-                width: "100%",
-                padding: "8px 10px",
-                fontSize: "13px",
-                fontFamily: "var(--font-mono)",
-                backgroundColor: canOperate
-                  ? "var(--color-bg-base)"
-                  : "var(--color-bg-elevated)",
-                border: `1px solid ${memoryError ? "var(--color-danger)" : "var(--color-border-muted)"}`,
-                borderRadius: "4px",
-                color: canOperate
-                  ? "var(--color-text-primary)"
-                  : "var(--color-text-secondary)",
-                outline: "none",
-                boxSizing: "border-box",
-                cursor: canOperate ? "text" : "default",
-              }}
-              onFocus={(e) => {
-                if (canOperate)
-                  e.currentTarget.style.borderColor = "var(--color-accent)";
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = memoryError
-                  ? "var(--color-danger)"
-                  : "var(--color-border-muted)";
-              }}
+              style={{ borderColor: memoryError ? "var(--redstone)" : undefined, opacity: canOperate ? 1 : 0.6 }}
             />
-            <p
-              style={{
-                margin: "4px 0 0",
-                fontSize: "11px",
-                color: "var(--color-text-muted)",
-                fontFamily: "var(--font-mono)",
-              }}
-            >
+            <p style={{ margin: "5px 0 0", fontSize: 11, color: "var(--ink-mute)", fontFamily: "var(--font-data)" }}>
               512 〜 65536
             </p>
             {memoryError && (
-              <p
-                style={{
-                  margin: "4px 0 0",
-                  fontSize: "11px",
-                  color: "var(--color-danger)",
-                  fontFamily: "var(--font-mono)",
-                }}
-              >
+              <p style={{ margin: "5px 0 0", fontSize: 11, color: "var(--redstone)", fontFamily: "var(--font-data)" }}>
                 {memoryError}
               </p>
             )}
           </div>
 
           {canOperate ? (
-            <button
-              type="submit"
-              disabled={memorySaving}
-              style={{
-                padding: "9px 24px",
-                fontSize: "13px",
-                fontFamily: "var(--font-mono)",
-                fontWeight: 600,
-                backgroundColor: memorySaving
-                  ? "var(--color-accent-dim)"
-                  : "var(--color-accent)",
-                color: memorySaving ? "var(--color-accent)" : "#0d1117",
-                border: "none",
-                borderRadius: "4px",
-                cursor: memorySaving ? "not-allowed" : "pointer",
-                transition: "opacity 0.15s",
-              }}
-            >
+            <button type="submit" className="mc-btn mc-btn--grass" disabled={memorySaving}>
               {memorySaving ? "適用中…(コンテナを再作成します)" : "保存"}
             </button>
           ) : (
-            <p
-              style={{
-                margin: 0,
-                fontSize: "12px",
-                fontFamily: "var(--font-mono)",
-                color: "var(--color-text-muted)",
-              }}
-            >
+            <p style={{ margin: 0, fontSize: 12, fontFamily: "var(--font-data)", color: "var(--ink-mute)" }}>
               閲覧専用モード — メモリの変更には operator 以上のロールが必要です。
             </p>
           )}
         </form>
-      </div>
+      </Panel>
 
-      {/* ── MOD 配置 (FTP) セクション ── */}
-      <div
-        style={{
-          marginTop: "24px",
-          backgroundColor: "var(--color-bg-card)",
-          border: "1px solid var(--color-border)",
-          borderRadius: "8px",
-          padding: "24px",
-        }}
-      >
-        <h2
-          style={{
-            margin: "0 0 16px",
-            fontSize: "13px",
-            fontFamily: "var(--font-mono)",
-            fontWeight: 600,
-            color: "var(--color-text-secondary)",
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-          }}
-        >
-          MOD 配置 (FTP)
-        </h2>
-
+      {/* ── MOD 配置 (FTP) ── */}
+      <Panel title="MOD 配置 (FTP)" padded style={{ marginTop: 24 }}>
         {ftpLoading ? (
-          <div
-            style={{
-              fontSize: "13px",
-              fontFamily: "var(--font-mono)",
-              color: "var(--color-text-muted)",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
+          <div style={{ fontSize: 13, fontFamily: "var(--font-data)", color: "var(--ink-mute)", display: "flex", alignItems: "center", gap: 8 }}>
             <Spinner size={14} />
             読み込み中…
           </div>
         ) : !ftpInfo ? (
-          <div
-            style={{
-              fontSize: "13px",
-              fontFamily: "var(--font-mono)",
-              color: "var(--color-text-muted)",
-            }}
-          >
+          <div style={{ fontSize: 13, fontFamily: "var(--font-data)", color: "var(--ink-mute)" }}>
             FTP 情報を取得できませんでした。
           </div>
         ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-              gap: "16px",
-            }}
-          >
-            {/* Host */}
-            <div>
-              <span
-                style={{
-                  display: "block",
-                  fontSize: "11px",
-                  fontFamily: "var(--font-mono)",
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  color: "var(--color-text-secondary)",
-                  marginBottom: "6px",
-                }}
-              >
-                ホスト
-              </span>
-              <div
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "13px",
-                  padding: "8px 12px",
-                  backgroundColor: "var(--color-bg-base)",
-                  border: "1px solid var(--color-border-muted)",
-                  borderRadius: "4px",
-                  color: ftpInfo.host
-                    ? "var(--color-text-primary)"
-                    : "var(--color-text-muted)",
-                  fontStyle: ftpInfo.host ? "normal" : "italic",
-                  userSelect: "text",
-                }}
-              >
-                {ftpInfo.host || "未設定（サーバーのホスト IP を使用）"}
-              </div>
-            </div>
-
-            {/* Port */}
-            <div>
-              <span
-                style={{
-                  display: "block",
-                  fontSize: "11px",
-                  fontFamily: "var(--font-mono)",
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  color: "var(--color-text-secondary)",
-                  marginBottom: "6px",
-                }}
-              >
-                ポート
-              </span>
-              <div
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "13px",
-                  padding: "8px 12px",
-                  backgroundColor: "var(--color-bg-base)",
-                  border: "1px solid var(--color-border-muted)",
-                  borderRadius: "4px",
-                  color: "var(--color-text-primary)",
-                  userSelect: "text",
-                }}
-              >
-                {ftpInfo.port}
-              </div>
-            </div>
-
-            {/* User */}
-            <div>
-              <span
-                style={{
-                  display: "block",
-                  fontSize: "11px",
-                  fontFamily: "var(--font-mono)",
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  color: "var(--color-text-secondary)",
-                  marginBottom: "6px",
-                }}
-              >
-                ユーザー名
-              </span>
-              <div
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "13px",
-                  padding: "8px 12px",
-                  backgroundColor: "var(--color-bg-base)",
-                  border: "1px solid var(--color-border-muted)",
-                  borderRadius: "4px",
-                  color: "var(--color-text-primary)",
-                  userSelect: "text",
-                }}
-              >
-                {ftpInfo.user}
-              </div>
-            </div>
-
-            {/* MODs path for this server */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+            <LabeledValue
+              label="ホスト"
+              value={ftpInfo.host || "未設定（サーバーのホスト IP を使用）"}
+              color={ftpInfo.host ? undefined : "var(--ink-mute)"}
+              italic={!ftpInfo.host}
+            />
+            <LabeledValue label="ポート" value={String(ftpInfo.port)} />
+            <LabeledValue label="ユーザー名" value={ftpInfo.user} />
             {serverFtpPath && (
               <div style={{ gridColumn: "1 / -1" }}>
-                <span
-                  style={{
-                    display: "block",
-                    fontSize: "11px",
-                    fontFamily: "var(--font-mono)",
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    color: "var(--color-text-secondary)",
-                    marginBottom: "6px",
-                  }}
-                >
-                  このサーバーの MOD 配置パス
-                </span>
-                <div
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "13px",
-                    padding: "8px 12px",
-                    backgroundColor: "var(--color-bg-base)",
-                    border: "1px solid var(--color-border-muted)",
-                    borderRadius: "4px",
-                    color: "var(--color-accent)",
-                    userSelect: "text",
-                    wordBreak: "break-all",
-                  }}
-                >
-                  {serverFtpPath}
-                </div>
+                <LabeledValue label="このサーバーの MOD 配置パス" value={serverFtpPath} color="#9fe07a" />
               </div>
             )}
           </div>
         )}
-      </div>
+      </Panel>
     </div>
   );
 }

@@ -5,13 +5,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { listServers } from "@/lib/api";
-import { statusColor } from "@/components/StatusBadge";
-import type { Server } from "@/lib/types";
+import type { Server, ServerStatus } from "@/lib/types";
 
 interface NavItem {
   label: string;
   href: string;
-  icon: string;
   adminOnly?: boolean;
 }
 
@@ -25,11 +23,25 @@ function pickRecentServer(servers: Server[]): Server | null {
   return recent;
 }
 
+function statusColor(status: ServerStatus): string {
+  switch (status) {
+    case "running":
+      return "var(--grass)";
+    case "starting":
+    case "stopping":
+      return "var(--gold)";
+    case "error":
+      return "var(--redstone)";
+    default:
+      return "var(--ink-mute)";
+  }
+}
+
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/", icon: "▪" },
-  { label: "ポート", href: "/ports", icon: "▪" },
-  { label: "FTP", href: "/ftp", icon: "▪" },
-  { label: "Users", href: "/users", icon: "▪", adminOnly: true },
+  { label: "ダッシュボード", href: "/" },
+  { label: "ポート", href: "/ports" },
+  { label: "FTP", href: "/ftp" },
+  { label: "ユーザー", href: "/users", adminOnly: true },
 ];
 
 export function Sidebar() {
@@ -70,40 +82,72 @@ export function Sidebar() {
 
   return (
     <aside
+      className="mc-panel"
       style={{
-        width: "220px",
+        width: 232,
         minHeight: "100dvh",
-        backgroundColor: "var(--color-bg-card)",
-        borderRight: "1px solid var(--color-border)",
         display: "flex",
         flexDirection: "column",
         flexShrink: 0,
+        borderTop: 0,
+        borderBottom: 0,
+        borderLeft: 0,
+        fontFamily: "var(--font-display)",
       }}
     >
-      {/* Logo */}
+      {/* Wordmark — a grass block with pixel "MC", then the Japanese name */}
       <div
         style={{
-          padding: "24px 20px 20px",
-          borderBottom: "1px solid var(--color-border)",
+          padding: "22px 18px 18px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          borderBottom: "2px solid var(--bevel-lo)",
         }}
       >
-        <div
+        <span
+          className="block-icon"
           style={{
-            fontFamily: "var(--font-mono)",
-            fontWeight: 700,
-            fontSize: "13px",
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            color: "var(--color-accent)",
+            width: 38,
+            height: 38,
+            backgroundColor: "var(--grass)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
           }}
         >
-          MC管理くん
+          <span
+            style={{
+              fontFamily: "var(--font-pixel)",
+              fontSize: 11,
+              color: "#f3f7ee",
+              letterSpacing: "0.02em",
+            }}
+          >
+            MC
+          </span>
+        </span>
+        <div style={{ lineHeight: 1.15 }}>
+          <div style={{ fontWeight: 800, fontSize: 16, color: "var(--ink)" }}>
+            管理くん
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--font-pixel)",
+              fontSize: 7,
+              letterSpacing: "0.06em",
+              color: "var(--ink-mute)",
+              marginTop: 3,
+            }}
+          >
+            SERVER CONSOLE
+          </div>
         </div>
-        <div className="pixel-border" style={{ marginTop: "10px" }} />
       </div>
 
-      {/* Navigation */}
-      <nav style={{ flex: 1, padding: "12px 0" }}>
+      {/* Navigation — each item is a slot you press */}
+      <nav style={{ flex: 1, padding: "14px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
         {visibleItems.map((item) => {
           const active = pathname === item.href;
           return (
@@ -113,32 +157,36 @@ export function Sidebar() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "10px",
-                padding: "8px 20px",
-                fontSize: "13px",
+                gap: 10,
+                padding: "9px 12px",
+                fontSize: 13.5,
+                fontWeight: 700,
                 textDecoration: "none",
-                color: active
-                  ? "var(--color-text-primary)"
-                  : "var(--color-text-secondary)",
-                backgroundColor: active
-                  ? "var(--color-accent-dim)"
-                  : "transparent",
-                borderLeft: active
-                  ? "2px solid var(--color-accent)"
-                  : "2px solid transparent",
-                transition: "background-color 0.15s, color 0.15s",
+                color: active ? "#f3f7ee" : "var(--ink-soft)",
+                backgroundColor: active ? "var(--grass)" : "transparent",
+                border: active ? "2px solid var(--outline)" : "2px solid transparent",
+                boxShadow: active
+                  ? "inset 2px 2px 0 0 rgba(255,255,255,0.32), inset -2px -2px 0 0 rgba(0,0,0,0.26)"
+                  : "none",
+                transition: "background-color 0.12s, color 0.12s",
+              }}
+              onMouseEnter={(e) => {
+                if (!active) e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.06)";
+              }}
+              onMouseLeave={(e) => {
+                if (!active) e.currentTarget.style.backgroundColor = "transparent";
               }}
             >
               <span
+                aria-hidden
                 style={{
-                  color: active
-                    ? "var(--color-accent)"
-                    : "var(--color-text-muted)",
-                  fontSize: "8px",
+                  width: 8,
+                  height: 8,
+                  flexShrink: 0,
+                  backgroundColor: active ? "#f3f7ee" : "var(--ink-mute)",
+                  border: "1px solid var(--outline)",
                 }}
-              >
-                {item.icon}
-              </span>
+              />
               {item.label}
             </Link>
           );
@@ -149,22 +197,20 @@ export function Sidebar() {
       {recentServer && (
         <div
           style={{
-            padding: "12px 20px 16px",
-            borderTop: "1px solid var(--color-border)",
+            padding: "14px 18px",
+            borderTop: "2px solid var(--bevel-lo)",
           }}
         >
           <div
             style={{
-              fontSize: "10px",
-              fontFamily: "var(--font-mono)",
-              fontWeight: 600,
-              textTransform: "uppercase",
+              fontFamily: "var(--font-pixel)",
+              fontSize: 8,
               letterSpacing: "0.08em",
-              color: "var(--color-text-muted)",
-              marginBottom: "8px",
+              color: "var(--ink-mute)",
+              marginBottom: 8,
             }}
           >
-            最近起動
+            RECENT SERVER
           </div>
           <Link
             href={`/servers/${recentServer.id}/console`}
@@ -172,32 +218,32 @@ export function Sidebar() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "8px",
+              gap: 8,
               padding: "8px 10px",
-              borderRadius: "4px",
-              border: "1px solid var(--color-border-muted)",
+              border: "2px solid var(--outline)",
               backgroundColor:
                 pathname === `/servers/${recentServer.id}/console`
-                  ? "var(--color-accent-dim)"
-                  : "transparent",
+                  ? "rgba(93, 141, 56, 0.22)"
+                  : "rgba(0,0,0,0.04)",
               textDecoration: "none",
+              boxShadow: "inset 1px 1px 0 rgba(255,255,255,0.25)",
             }}
           >
             <span
               style={{
                 display: "inline-block",
-                width: "7px",
-                height: "7px",
-                borderRadius: "50%",
+                width: 8,
+                height: 8,
                 flexShrink: 0,
                 backgroundColor: statusColor(recentServer.liveStatus),
+                border: "1px solid var(--outline)",
               }}
             />
             <span
               style={{
-                fontSize: "12px",
-                fontFamily: "var(--font-mono)",
-                color: "var(--color-text-primary)",
+                fontSize: 12,
+                fontFamily: "var(--font-data)",
+                color: "var(--ink)",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
@@ -209,63 +255,43 @@ export function Sidebar() {
         </div>
       )}
 
-      {/* User info + logout */}
+      {/* Signed-in user + sign out */}
       {user && (
         <div
           style={{
-            padding: "16px 20px",
-            borderTop: "1px solid var(--color-border)",
+            padding: "16px 18px",
+            borderTop: "2px solid var(--bevel-lo)",
           }}
         >
           <div
             style={{
-              fontSize: "12px",
-              color: "var(--color-text-secondary)",
-              marginBottom: "4px",
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-data)",
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: "var(--ink)",
+              marginBottom: 2,
             }}
           >
             {user.username}
           </div>
           <div
             style={{
-              fontSize: "11px",
-              color: "var(--color-text-muted)",
-              marginBottom: "12px",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
+              fontFamily: "var(--font-pixel)",
+              fontSize: 8,
+              letterSpacing: "0.06em",
+              color: "var(--ink-mute)",
+              marginBottom: 12,
             }}
           >
-            {user.role}
+            {user.role.toUpperCase()}
           </div>
           <button
+            type="button"
+            className="mc-btn"
             onClick={() => void handleLogout()}
-            style={{
-              width: "100%",
-              padding: "6px 12px",
-              fontSize: "12px",
-              backgroundColor: "transparent",
-              border: "1px solid var(--color-border-muted)",
-              borderRadius: "4px",
-              color: "var(--color-text-secondary)",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              transition: "border-color 0.15s, color 0.15s",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                "var(--color-danger)";
-              (e.currentTarget as HTMLButtonElement).style.color =
-                "var(--color-danger)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                "var(--color-border-muted)";
-              (e.currentTarget as HTMLButtonElement).style.color =
-                "var(--color-text-secondary)";
-            }}
+            style={{ width: "100%", fontSize: 12.5 }}
           >
-            Sign out
+            サインアウト
           </button>
         </div>
       )}

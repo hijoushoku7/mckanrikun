@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AuthGuard } from "@/components/AuthGuard";
-import { Sidebar } from "@/components/Sidebar";
+import { AppShell } from "@/components/AppShell";
+import { PageHeader, Panel, LoadingState, EmptyState } from "@/components/mc";
 import { toast } from "@/components/Toast";
-import { Spinner } from "@/components/Spinner";
 import { ApiError, listPorts, listServers } from "@/lib/api";
 import type { PortAllocation, Server } from "@/lib/types";
 
@@ -12,19 +11,17 @@ import type { PortAllocation, Server } from "@/lib/types";
 // Helpers
 // ──────────────────────────────────────────────
 
-function purposeLabel(
-  purpose: PortAllocation["purpose"]
-): { label: string; color: string; bg: string } {
+function purposeChip(purpose: PortAllocation["purpose"]): { label: string; color: string } {
   switch (purpose) {
     case "game":
-      return { label: "ゲーム", color: "var(--color-success)", bg: "#1a3a20" };
+      return { label: "ゲーム", color: "var(--grass)" };
     case "rcon":
-      return { label: "RCON", color: "var(--color-accent)", bg: "var(--color-accent-dim)" };
+      return { label: "RCON", color: "var(--lapis)" };
     case "ftp":
-      return { label: "FTP", color: "var(--color-warning)", bg: "#3a2e10" };
+      return { label: "FTP", color: "var(--gold)" };
     case "other":
     default:
-      return { label: "その他", color: "var(--color-text-muted)", bg: "var(--color-bg-elevated)" };
+      return { label: "その他", color: "var(--ink-mute)" };
   }
 }
 
@@ -38,24 +35,10 @@ function formatDate(iso: string): string {
   });
 }
 
-function PurposeBadge({ purpose }: { purpose: PortAllocation["purpose"] }) {
-  const { label, color, bg } = purposeLabel(purpose);
+function PurposeChip({ purpose }: { purpose: PortAllocation["purpose"] }) {
+  const { label, color } = purposeChip(purpose);
   return (
-    <span
-      style={{
-        display: "inline-block",
-        padding: "2px 8px",
-        fontSize: "11px",
-        fontFamily: "var(--font-mono)",
-        fontWeight: 600,
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        borderRadius: "4px",
-        backgroundColor: bg,
-        color: color,
-        border: `1px solid ${color}`,
-      }}
-    >
+    <span className="mc-chip" style={{ borderColor: color, color }}>
       {label}
     </span>
   );
@@ -67,21 +50,9 @@ function PurposeBadge({ purpose }: { purpose: PortAllocation["purpose"] }) {
 
 export default function PortsPage() {
   return (
-    <AuthGuard>
-      <div style={{ display: "flex", minHeight: "100dvh" }}>
-        <Sidebar />
-        <main
-          style={{
-            flex: 1,
-            padding: "32px",
-            overflowY: "auto",
-            backgroundColor: "var(--color-bg-base)",
-          }}
-        >
-          <PortsContent />
-        </main>
-      </div>
-    </AuthGuard>
+    <AppShell>
+      <PortsContent />
+    </AppShell>
   );
 }
 
@@ -94,7 +65,6 @@ function PortsContent() {
     setLoading(true);
     try {
       const [ports, srvList] = await Promise.all([listPorts(), listServers()]);
-      // ポート昇順ソート
       const sorted = [...ports].sort((a, b) => a.port - b.port);
       setAllocations(sorted);
       setServers(srvList);
@@ -114,261 +84,63 @@ function PortsContent() {
   }, [fetchData]);
 
   function serverName(serverId: string | null): string {
-    if (!serverId) return "-";
+    if (!serverId) return "—";
     const srv = servers.find((s) => s.id === serverId);
     return srv ? srv.name : serverId;
   }
 
-  const thStyle: React.CSSProperties = {
-    padding: "10px 16px",
-    textAlign: "left",
-    fontSize: "11px",
-    fontFamily: "var(--font-mono)",
-    fontWeight: 600,
-    color: "var(--color-text-muted)",
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-    whiteSpace: "nowrap",
-  };
-
-  const tdStyle: React.CSSProperties = {
-    padding: "12px 16px",
-    fontFamily: "var(--font-mono)",
-    fontSize: "13px",
-    color: "var(--color-text-primary)",
-    whiteSpace: "nowrap",
-  };
-
   return (
-    <div>
-      {/* Page header */}
-      <div
-        style={{
-          marginBottom: "32px",
-          paddingBottom: "20px",
-          borderBottom: "1px solid var(--color-border)",
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: "16px",
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: "20px",
-              fontWeight: 600,
-              color: "var(--color-text-primary)",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            ポート使用状況
-          </h1>
-          <p
-            style={{
-              margin: "6px 0 0",
-              fontSize: "13px",
-              color: "var(--color-text-secondary)",
-            }}
-          >
-            ホストで割り当て済みのポート一覧
-          </p>
-        </div>
-        <button
-          onClick={() => void fetchData()}
-          style={{
-            padding: "7px 14px",
-            fontSize: "12px",
-            fontFamily: "var(--font-mono)",
-            backgroundColor: "transparent",
-            border: "1px solid var(--color-border-muted)",
-            borderRadius: "4px",
-            color: "var(--color-text-secondary)",
-            cursor: "pointer",
-            transition: "border-color 0.15s, color 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "var(--color-accent)";
-            e.currentTarget.style.color = "var(--color-accent)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "var(--color-border-muted)";
-            e.currentTarget.style.color = "var(--color-text-secondary)";
-          }}
-        >
-          更新
-        </button>
-      </div>
+    <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+      <PageHeader
+        eyebrow="NETWORK"
+        title="ポート使用状況"
+        subtitle="ホストで割り当て済みのポート一覧"
+        actions={
+          <button type="button" className="mc-btn" onClick={() => void fetchData()}>
+            更新
+          </button>
+        }
+      />
 
-      {/* Table card */}
-      <div
-        style={{
-          backgroundColor: "var(--color-bg-card)",
-          border: "1px solid var(--color-border)",
-          borderRadius: "8px",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            padding: "16px 24px",
-            borderBottom: "1px solid var(--color-border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <h2
-            style={{
-              margin: 0,
-              fontSize: "13px",
-              fontFamily: "var(--font-mono)",
-              fontWeight: 600,
-              color: "var(--color-text-secondary)",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-            }}
-          >
-            Allocations
-          </h2>
-          <span
-            style={{
-              fontSize: "11px",
-              fontFamily: "var(--font-mono)",
-              color: "var(--color-text-muted)",
-            }}
-          >
-            {allocations.length} total
-          </span>
-        </div>
-
+      <Panel title="ALLOCATIONS" meta={`${allocations.length} 件`}>
         {loading ? (
-          <div
-            style={{
-              padding: "48px",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "12px",
-              color: "var(--color-text-secondary)",
-              fontSize: "13px",
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            <Spinner size={24} />
-            読み込み中…
-          </div>
+          <LoadingState />
         ) : allocations.length === 0 ? (
-          <div
-            style={{
-              padding: "64px 32px",
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "28px",
-                color: "var(--color-border-muted)",
-                letterSpacing: "0.05em",
-                marginBottom: "12px",
-                userSelect: "none",
-              }}
-            >
-              ▪ ▪ ▪
-            </div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: "14px",
-                color: "var(--color-text-secondary)",
-              }}
-            >
-              登録されているポートがありません
-            </p>
-          </div>
+          <EmptyState message="登録されているポートがありません" />
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "13px",
-              }}
-            >
+            <table className="mc-table">
               <thead>
-                <tr
-                  style={{
-                    borderBottom: "1px solid var(--color-border)",
-                    backgroundColor: "var(--color-bg-elevated)",
-                  }}
-                >
-                  {["ポート", "プロトコル", "用途", "サーバー", "備考", "登録日時"].map(
-                    (h) => (
-                      <th key={h} style={thStyle}>
-                        {h}
-                      </th>
-                    )
-                  )}
+                <tr>
+                  {["ポート", "プロトコル", "用途", "サーバー", "備考", "登録日時"].map((h) => (
+                    <th key={h}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {allocations.map((alloc, idx) => (
-                  <tr
-                    key={alloc.id}
-                    style={{
-                      borderBottom:
-                        idx < allocations.length - 1
-                          ? "1px solid var(--color-border)"
-                          : "none",
-                    }}
-                  >
-                    <td style={{ ...tdStyle, fontWeight: 700 }}>
-                      {alloc.port}
-                    </td>
-                    <td
-                      style={{
-                        ...tdStyle,
-                        textTransform: "uppercase",
-                        color: "var(--color-text-secondary)",
-                      }}
-                    >
+                {allocations.map((alloc) => (
+                  <tr key={alloc.id}>
+                    <td style={{ fontWeight: 700, fontSize: 14 }}>{alloc.port}</td>
+                    <td style={{ textTransform: "uppercase", color: "var(--ink-soft)" }}>
                       {alloc.protocol}
                     </td>
-                    <td style={tdStyle}>
-                      <PurposeBadge purpose={alloc.purpose} />
+                    <td>
+                      <PurposeChip purpose={alloc.purpose} />
                     </td>
-                    <td
-                      style={{
-                        ...tdStyle,
-                        color: alloc.serverId
-                          ? "var(--color-text-primary)"
-                          : "var(--color-text-muted)",
-                      }}
-                    >
+                    <td style={{ color: alloc.serverId ? "var(--ink)" : "var(--ink-mute)" }}>
                       {serverName(alloc.serverId)}
                     </td>
                     <td
                       style={{
-                        ...tdStyle,
-                        color: "var(--color-text-secondary)",
-                        maxWidth: "240px",
+                        color: "var(--ink-soft)",
+                        maxWidth: 240,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
                       }}
                     >
-                      {alloc.note ?? "-"}
+                      {alloc.note ?? "—"}
                     </td>
-                    <td
-                      style={{
-                        ...tdStyle,
-                        color: "var(--color-text-secondary)",
-                        fontSize: "12px",
-                      }}
-                    >
+                    <td style={{ color: "var(--ink-soft)", fontSize: 12 }}>
                       {formatDate(alloc.createdAt)}
                     </td>
                   </tr>
@@ -377,7 +149,7 @@ function PortsContent() {
             </table>
           </div>
         )}
-      </div>
+      </Panel>
     </div>
   );
 }

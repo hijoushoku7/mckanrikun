@@ -1,70 +1,35 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AuthGuard } from "@/components/AuthGuard";
-import { Sidebar } from "@/components/Sidebar";
+import { AppShell } from "@/components/AppShell";
+import { PageHeader, Panel, LoadingState } from "@/components/mc";
 import { toast } from "@/components/Toast";
-import { Spinner } from "@/components/Spinner";
 import { ApiError, getFtpInfo } from "@/lib/api";
 import type { FtpInfo } from "@/lib/types";
 
-// ──────────────────────────────────────────────
-// Helpers
-// ──────────────────────────────────────────────
-
-const monoValueStyle: React.CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "13px",
-  padding: "8px 12px",
-  backgroundColor: "var(--color-bg-base)",
-  border: "1px solid var(--color-border-muted)",
-  borderRadius: "4px",
-  color: "var(--color-text-primary)",
-  userSelect: "text",
-  wordBreak: "break-all",
-};
-
-const labelStyle: React.CSSProperties = {
+const fieldLabel: React.CSSProperties = {
   display: "block",
-  fontSize: "11px",
-  fontFamily: "var(--font-mono)",
-  fontWeight: 600,
-  textTransform: "uppercase",
-  letterSpacing: "0.08em",
-  color: "var(--color-text-secondary)",
-  marginBottom: "6px",
+  fontFamily: "var(--font-pixel)",
+  fontSize: 9,
+  letterSpacing: "0.07em",
+  color: "var(--ink-soft)",
+  marginBottom: 7,
 };
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span style={labelStyle}>{label}</span>
-      <div style={monoValueStyle}>{value}</div>
+      <span style={fieldLabel}>{label}</span>
+      <div className="mc-value">{value}</div>
     </div>
   );
 }
 
-// ──────────────────────────────────────────────
-// Page
-// ──────────────────────────────────────────────
-
 export default function FtpPage() {
   return (
-    <AuthGuard>
-      <div style={{ display: "flex", minHeight: "100dvh" }}>
-        <Sidebar />
-        <main
-          style={{
-            flex: 1,
-            padding: "32px",
-            overflowY: "auto",
-            backgroundColor: "var(--color-bg-base)",
-          }}
-        >
-          <FtpContent />
-        </main>
-      </div>
-    </AuthGuard>
+    <AppShell>
+      <FtpContent />
+    </AppShell>
   );
 }
 
@@ -94,229 +59,120 @@ function FtpContent() {
   }, [fetchFtp]);
 
   return (
-    <div style={{ maxWidth: "640px" }}>
-      {/* Page header */}
-      <div
-        style={{
-          marginBottom: "32px",
-          paddingBottom: "20px",
-          borderBottom: "1px solid var(--color-border)",
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: "20px",
-            fontWeight: 600,
-            color: "var(--color-text-primary)",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          FTP 接続情報
-        </h1>
-        <p
-          style={{
-            margin: "6px 0 0",
-            fontSize: "13px",
-            color: "var(--color-text-secondary)",
-          }}
-        >
-          MOD ファイルのアップロードに使用する FTP サーバーの接続情報
-        </p>
-      </div>
+    <div style={{ maxWidth: 680, margin: "0 auto" }}>
+      <PageHeader
+        eyebrow="MODS / FTP"
+        title="FTP 接続情報"
+        subtitle="MOD ファイルのアップロードに使用する FTP サーバーの接続情報"
+      />
 
-      {/* Note: read-only */}
-      <div
-        style={{
-          padding: "10px 16px",
-          marginBottom: "24px",
-          backgroundColor: "var(--color-bg-elevated)",
-          border: "1px solid var(--color-border-muted)",
-          borderRadius: "6px",
-          fontSize: "12px",
-          fontFamily: "var(--font-mono)",
-          color: "var(--color-text-muted)",
-        }}
-      >
+      <div className="mc-note" style={{ marginBottom: 24 }}>
         このページは接続情報の閲覧のみです。FTP 経由のファイルアップロード機能は管理画面のスコープ外です。
       </div>
 
       {loading ? (
-        <div
-          style={{
-            padding: "48px",
-            textAlign: "center",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "12px",
-            color: "var(--color-text-secondary)",
-            fontSize: "13px",
-            fontFamily: "var(--font-mono)",
-          }}
-        >
-          <Spinner size={24} />
-          読み込み中…
-        </div>
+        <Panel>
+          <LoadingState />
+        </Panel>
       ) : fetchError ? (
-        <div
-          style={{
-            padding: "24px",
-            backgroundColor: "#3a1a1a",
-            border: "1px solid var(--color-danger)",
-            borderRadius: "6px",
-            fontSize: "13px",
-            fontFamily: "var(--font-mono)",
-            color: "var(--color-danger)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-          }}
-        >
-          <span>{fetchError}</span>
-          <div>
-            <button
-              onClick={fetchFtp}
-              style={{
-                padding: "6px 16px",
-                fontSize: "12px",
-                fontFamily: "var(--font-mono)",
-                backgroundColor: "transparent",
-                border: "1px solid var(--color-danger)",
-                borderRadius: "4px",
-                color: "var(--color-danger)",
-                cursor: "pointer",
-              }}
-            >
-              再試行
-            </button>
-          </div>
-        </div>
-      ) : ftp ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-          {/* Connection info card */}
+        <Panel padded>
           <div
             style={{
-              backgroundColor: "var(--color-bg-card)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "8px",
-              padding: "24px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+              fontFamily: "var(--font-data)",
+              fontSize: 13,
+              color: "var(--redstone)",
             }}
           >
-            <h2
-              style={{
-                margin: "0 0 20px",
-                fontSize: "13px",
-                fontFamily: "var(--font-mono)",
-                fontWeight: 600,
-                color: "var(--color-text-secondary)",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-              }}
-            >
-              接続情報
-            </h2>
+            <span>{fetchError}</span>
+            <div>
+              <button type="button" className="mc-btn mc-btn--redstone" onClick={fetchFtp}>
+                再試行
+              </button>
+            </div>
+          </div>
+        </Panel>
+      ) : ftp ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+          <Panel title="接続情報" padded>
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-                gap: "16px",
+                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                gap: 18,
               }}
             >
               <div>
-                <span style={labelStyle}>ホスト</span>
+                <span style={fieldLabel}>ホスト</span>
                 {ftp.host ? (
-                  <div style={monoValueStyle}>{ftp.host}</div>
+                  <div className="mc-value">{ftp.host}</div>
                 ) : (
-                  <div
-                    style={{
-                      ...monoValueStyle,
-                      color: "var(--color-text-muted)",
-                      fontStyle: "italic",
-                    }}
-                  >
+                  <div className="mc-value" style={{ color: "var(--ink-mute)", fontStyle: "italic" }}>
                     未設定
                   </div>
                 )}
                 {!ftp.host && (
                   <p
                     style={{
-                      margin: "4px 0 0",
-                      fontSize: "11px",
-                      color: "var(--color-text-muted)",
-                      fontFamily: "var(--font-mono)",
+                      margin: "6px 0 0",
+                      fontSize: 11,
+                      color: "var(--ink-mute)",
+                      fontFamily: "var(--font-data)",
                     }}
                   >
                     ※ 未設定の場合はサーバーのホスト IP を使用してください
                   </p>
                 )}
               </div>
-              <InfoRow label="ポート" value={String(ftp.port)} />
-              <InfoRow label="ユーザー名" value={ftp.user} />
+              <InfoField label="ポート" value={String(ftp.port)} />
+              <InfoField label="ユーザー名" value={ftp.user} />
             </div>
-          </div>
+          </Panel>
 
-          {/* MODs path template card */}
-          <div
-            style={{
-              backgroundColor: "var(--color-bg-card)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "8px",
-              padding: "24px",
-            }}
-          >
-            <h2
-              style={{
-                margin: "0 0 8px",
-                fontSize: "13px",
-                fontFamily: "var(--font-mono)",
-                fontWeight: 600,
-                color: "var(--color-text-secondary)",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-              }}
-            >
-              MOD 配置パステンプレート
-            </h2>
+          <Panel title="MOD 配置パステンプレート" padded>
             <p
               style={{
                 margin: "0 0 16px",
-                fontSize: "12px",
-                color: "var(--color-text-secondary)",
-                lineHeight: "1.6",
+                fontSize: 12.5,
+                color: "var(--ink-soft)",
+                lineHeight: 1.6,
+                fontFamily: "var(--font-data)",
               }}
             >
               各サーバーの mods は、テンプレートの{" "}
               <code
                 style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "12px",
-                  padding: "1px 5px",
-                  backgroundColor: "var(--color-bg-base)",
-                  border: "1px solid var(--color-border-muted)",
-                  borderRadius: "3px",
-                  color: "var(--color-accent)",
+                  fontFamily: "var(--font-data)",
+                  fontSize: 12,
+                  padding: "1px 6px",
+                  backgroundColor: "var(--slot-deep)",
+                  border: "1px solid var(--outline)",
+                  color: "#9fe07a",
                 }}
               >
                 :id
               </code>{" "}
               をサーバー ID に置換したパスに配置してください。
             </p>
-            <InfoRow label="テンプレート" value={ftp.modsPathTemplate} />
-          </div>
+            <InfoField label="テンプレート" value={ftp.modsPathTemplate} />
+          </Panel>
         </div>
       ) : (
-        <div
-          style={{
-            padding: "40px",
-            textAlign: "center",
-            color: "var(--color-text-muted)",
-            fontSize: "13px",
-            fontFamily: "var(--font-mono)",
-          }}
-        >
-          FTP 情報を取得できませんでした。
-        </div>
+        <Panel>
+          <div
+            style={{
+              padding: 40,
+              textAlign: "center",
+              color: "var(--ink-mute)",
+              fontSize: 13,
+              fontFamily: "var(--font-data)",
+            }}
+          >
+            FTP 情報を取得できませんでした。
+          </div>
+        </Panel>
       )}
     </div>
   );
