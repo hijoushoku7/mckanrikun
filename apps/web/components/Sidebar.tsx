@@ -1,14 +1,28 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { listServers } from "@/lib/api";
+import { statusColor } from "@/components/StatusBadge";
+import type { Server } from "@/lib/types";
 
 interface NavItem {
   label: string;
   href: string;
   icon: string;
   adminOnly?: boolean;
+}
+
+/** lastStartedAt が最新のサーバーを返す(未起動のみなら null)。 */
+function pickRecentServer(servers: Server[]): Server | null {
+  let recent: Server | null = null;
+  for (const s of servers) {
+    if (!s.lastStartedAt) continue;
+    if (!recent || s.lastStartedAt > recent.lastStartedAt!) recent = s;
+  }
+  return recent;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -22,6 +36,28 @@ export function Sidebar() {
   const { user, signOut } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+
+  // 最後に起動したサーバー(サイドバーから即コンソールへ飛べるように)。
+  const [recentServer, setRecentServer] = useState<Server | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    const load = () => {
+      listServers()
+        .then((servers) => {
+          if (!cancelled) setRecentServer(pickRecentServer(servers));
+        })
+        .catch(() => {
+          // 取得失敗は無視(ナビの主要機能ではない)。
+        });
+    };
+    load();
+    const t = setInterval(load, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [user]);
 
   async function handleLogout() {
     await signOut();
@@ -108,6 +144,70 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* 最近起動したサーバー */}
+      {recentServer && (
+        <div
+          style={{
+            padding: "12px 20px 16px",
+            borderTop: "1px solid var(--color-border)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "10px",
+              fontFamily: "var(--font-mono)",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: "var(--color-text-muted)",
+              marginBottom: "8px",
+            }}
+          >
+            最近起動
+          </div>
+          <Link
+            href={`/servers/${recentServer.id}/console`}
+            title={`${recentServer.name} のコンソールを開く`}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "8px 10px",
+              borderRadius: "4px",
+              border: "1px solid var(--color-border-muted)",
+              backgroundColor:
+                pathname === `/servers/${recentServer.id}/console`
+                  ? "var(--color-accent-dim)"
+                  : "transparent",
+              textDecoration: "none",
+            }}
+          >
+            <span
+              style={{
+                display: "inline-block",
+                width: "7px",
+                height: "7px",
+                borderRadius: "50%",
+                flexShrink: 0,
+                backgroundColor: statusColor(recentServer.liveStatus),
+              }}
+            />
+            <span
+              style={{
+                fontSize: "12px",
+                fontFamily: "var(--font-mono)",
+                color: "var(--color-text-primary)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {recentServer.name}
+            </span>
+          </Link>
+        </div>
+      )}
 
       {/* User info + logout */}
       {user && (

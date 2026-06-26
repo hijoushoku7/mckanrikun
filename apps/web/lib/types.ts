@@ -31,6 +31,8 @@ export interface Server {
   containerId: string | null;
   eulaAccepted: boolean;
   statusCache: ServerStatus;
+  /** 最後に起動した時刻(ISO 文字列)。未起動なら null。 */
+  lastStartedAt: string | null;
   createdAt: string;
   updatedAt: string;
   liveStatus: ServerStatus;
