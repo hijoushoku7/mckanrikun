@@ -1,0 +1,1 @@
+ALTER TABLE `servers` ADD `last_started_at` integer;
