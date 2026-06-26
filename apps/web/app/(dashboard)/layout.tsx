@@ -18,11 +18,13 @@ export default function DashboardLayout({
       >
         <Sidebar />
         <main
+          className="stone-surface"
           style={{
             flex: 1,
-            padding: "32px",
+            padding: "36px 40px",
             overflowY: "auto",
-            backgroundColor: "var(--color-bg-base)",
+            fontFamily: "var(--font-display)",
+            color: "var(--ink)",
           }}
         >
           {children}
