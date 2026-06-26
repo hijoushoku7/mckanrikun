@@ -37,13 +37,14 @@ interface LogEntry {
 export default function ConsolePage() {
   return (
     <AuthGuard>
-      <div style={{ display: "flex", minHeight: "100dvh" }}>
+      <div style={{ display: "flex", height: "100dvh", overflow: "hidden" }}>
         <Sidebar />
         <main
           style={{
             flex: 1,
             padding: "32px",
-            overflowY: "auto",
+            overflow: "hidden",
+            minHeight: 0,
             backgroundColor: "var(--color-bg-base)",
             display: "flex",
             flexDirection: "column",
@@ -98,6 +99,23 @@ function ConsoleContent() {
         }
       })
       .finally(() => setServerLoading(false));
+  }, [id]);
+
+  // ── ステータスの軽量ポーリング(操作後の状態変化を反映) ──
+  useEffect(() => {
+    if (!id) return;
+    const t = setInterval(() => {
+      getServer(id)
+        .then((s) =>
+          setServer((prev) =>
+            prev ? { ...prev, liveStatus: s.liveStatus } : s
+          )
+        )
+        .catch(() => {
+          // ポーリング失敗は無視(次回再試行)。
+        });
+    }, 5000);
+    return () => clearInterval(t);
   }, [id]);
 
   // ── Log append helper ──
@@ -333,7 +351,7 @@ function ConsoleContent() {
   // ──────────────────────────────────────────────
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: "24px" }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, gap: "24px" }}>
       {/* Page header */}
       <div
         style={{
@@ -425,7 +443,37 @@ function ConsoleContent() {
           )}
         </div>
 
-        <WsIndicator />
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {server && (
+            <Link
+              href={`/servers/${id}/settings`}
+              style={{
+                padding: "7px 14px",
+                fontSize: "12px",
+                fontFamily: "var(--font-mono)",
+                backgroundColor: "transparent",
+                border: "1px solid var(--color-border-muted)",
+                borderRadius: "4px",
+                color: "var(--color-text-secondary)",
+                textDecoration: "none",
+                display: "inline-block",
+                transition: "border-color 0.15s, color 0.15s",
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-accent)";
+                e.currentTarget.style.color = "var(--color-accent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-border-muted)";
+                e.currentTarget.style.color = "var(--color-text-secondary)";
+              }}
+            >
+              ← 設定
+            </Link>
+          )}
+          <WsIndicator />
+        </div>
       </div>
 
       {/* Log viewer */}
@@ -437,7 +485,7 @@ function ConsoleContent() {
           display: "flex",
           flexDirection: "column",
           flex: 1,
-          minHeight: "420px",
+          minHeight: 0,
           overflow: "hidden",
         }}
       >
