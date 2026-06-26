@@ -622,6 +622,34 @@ export default function DashboardPage() {
                               再起動
                             </button>
                             <Link
+                              href={`/servers/${server.id}/console`}
+                              style={{
+                                ...actionBtnStyle(
+                                  "var(--color-text-secondary)",
+                                  busy
+                                ),
+                                textDecoration: "none",
+                                display: "inline-block",
+                                pointerEvents: busy ? "none" : "auto",
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!busy) {
+                                  e.currentTarget.style.borderColor =
+                                    "var(--color-text-secondary)";
+                                  e.currentTarget.style.color =
+                                    "var(--color-text-primary)";
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor =
+                                  "var(--color-border-muted)";
+                                e.currentTarget.style.color =
+                                  "var(--color-text-secondary)";
+                              }}
+                            >
+                              コンソール
+                            </Link>
+                            <Link
                               href={`/servers/${server.id}/settings`}
                               style={{
                                 ...actionBtnStyle(
