@@ -425,7 +425,37 @@ function ConsoleContent() {
           )}
         </div>
 
-        <WsIndicator />
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {server && (
+            <Link
+              href={`/servers/${id}/settings`}
+              style={{
+                padding: "7px 14px",
+                fontSize: "12px",
+                fontFamily: "var(--font-mono)",
+                backgroundColor: "transparent",
+                border: "1px solid var(--color-border-muted)",
+                borderRadius: "4px",
+                color: "var(--color-text-secondary)",
+                textDecoration: "none",
+                display: "inline-block",
+                transition: "border-color 0.15s, color 0.15s",
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-accent)";
+                e.currentTarget.style.color = "var(--color-accent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-border-muted)";
+                e.currentTarget.style.color = "var(--color-text-secondary)";
+              }}
+            >
+              ← 設定
+            </Link>
+          )}
+          <WsIndicator />
+        </div>
       </div>
 
       {/* Log viewer */}
