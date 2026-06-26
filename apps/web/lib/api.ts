@@ -98,6 +98,7 @@ let mockServers: Server[] = [
     eulaAccepted: true,
     statusCache: "running",
     liveStatus: "running",
+    lastStartedAt: "2026-06-26T08:55:00.000Z",
     createdAt: "2026-06-21T10:20:00.000Z",
     updatedAt: now,
   },
@@ -115,6 +116,7 @@ let mockServers: Server[] = [
     eulaAccepted: true,
     statusCache: "stopped",
     liveStatus: "stopped",
+    lastStartedAt: "2026-06-25T17:20:00.000Z",
     createdAt: "2026-06-22T15:00:00.000Z",
     updatedAt: "2026-06-25T17:40:00.000Z",
   },
@@ -132,6 +134,7 @@ let mockServers: Server[] = [
     eulaAccepted: true,
     statusCache: "starting",
     liveStatus: "starting",
+    lastStartedAt: now,
     createdAt: "2026-06-23T09:15:00.000Z",
     updatedAt: now,
   },
@@ -443,6 +446,7 @@ export async function createServer(
       eulaAccepted: payload.eulaAccepted,
       statusCache: "stopped",
       liveStatus: "stopped",
+      lastStartedAt: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -464,9 +468,16 @@ export async function controlServer(
   if (MOCK_API_ENABLED) {
     const server = mockServerOrThrow(id);
     const nextStatus: ServerStatus = action === "stop" ? "stopped" : "running";
+    const updatedAt = new Date().toISOString();
     mockServers = mockServers.map((s) =>
       s.id === id
-        ? { ...s, statusCache: nextStatus, liveStatus: nextStatus, updatedAt: new Date().toISOString() }
+        ? {
+            ...s,
+            statusCache: nextStatus,
+            liveStatus: nextStatus,
+            lastStartedAt: action === "stop" ? s.lastStartedAt : updatedAt,
+            updatedAt,
+          }
         : s
     );
     return mockDelay(server.liveStatus === nextStatus ? server.liveStatus : nextStatus);
