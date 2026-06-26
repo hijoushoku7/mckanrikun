@@ -37,13 +37,14 @@ interface LogEntry {
 export default function ConsolePage() {
   return (
     <AuthGuard>
-      <div style={{ display: "flex", minHeight: "100dvh" }}>
+      <div style={{ display: "flex", height: "100dvh", overflow: "hidden" }}>
         <Sidebar />
         <main
           style={{
             flex: 1,
             padding: "32px",
-            overflowY: "auto",
+            overflow: "hidden",
+            minHeight: 0,
             backgroundColor: "var(--color-bg-base)",
             display: "flex",
             flexDirection: "column",
@@ -333,7 +334,7 @@ function ConsoleContent() {
   // ──────────────────────────────────────────────
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: "24px" }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, gap: "24px" }}>
       {/* Page header */}
       <div
         style={{
@@ -437,7 +438,7 @@ function ConsoleContent() {
           display: "flex",
           flexDirection: "column",
           flex: 1,
-          minHeight: "420px",
+          minHeight: 0,
           overflow: "hidden",
         }}
       >
