@@ -102,24 +102,53 @@ export default function DashboardPage() {
     };
   }, [fetchServers]);
 
+  // 操作直後は状態が確定するまで数秒間だけ短間隔で再取得する。
+  // 通常の 10 秒ポーリングだと start/stop の遷移完了が最大 10 秒反映されない。
+  const burstRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startBurstPoll = useCallback(() => {
+    if (burstRef.current) clearTimeout(burstRef.current);
+    let count = 0;
+    const tick = () => {
+      void fetchServers();
+      count += 1;
+      burstRef.current = count < 8 ? setTimeout(tick, 2000) : null;
+    };
+    burstRef.current = setTimeout(tick, 1500);
+  }, [fetchServers]);
+  useEffect(
+    () => () => {
+      if (burstRef.current) clearTimeout(burstRef.current);
+    },
+    []
+  );
+
   async function handleControl(
     id: string,
     action: "start" | "stop" | "restart"
   ) {
     setActionId(id);
+    // 楽観的更新: コマンド送出と同時にバッジを過渡状態へ。
+    const optimistic: Server["liveStatus"] =
+      action === "stop" ? "stopping" : "starting";
+    setServers((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, liveStatus: optimistic } : s))
+    );
     try {
       await controlServer(id, action);
       toast(
         `${action === "start" ? "起動" : action === "stop" ? "停止" : "再起動"}コマンドを送信しました。`,
         "success"
       );
-      await fetchServers();
+      // 状態が確定するまで短間隔で追従。
+      startBurstPoll();
     } catch (err) {
       if (err instanceof ApiError) {
         toast(`操作に失敗: ${err.message}`, "error");
       } else {
         toast("操作に失敗しました。", "error");
       }
+      // 失敗時は楽観的更新を実状態へ戻す。
+      await fetchServers();
     } finally {
       setActionId(null);
     }

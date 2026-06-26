@@ -101,6 +101,23 @@ function ConsoleContent() {
       .finally(() => setServerLoading(false));
   }, [id]);
 
+  // ── ステータスの軽量ポーリング(操作後の状態変化を反映) ──
+  useEffect(() => {
+    if (!id) return;
+    const t = setInterval(() => {
+      getServer(id)
+        .then((s) =>
+          setServer((prev) =>
+            prev ? { ...prev, liveStatus: s.liveStatus } : s
+          )
+        )
+        .catch(() => {
+          // ポーリング失敗は無視(次回再試行)。
+        });
+    }, 5000);
+    return () => clearInterval(t);
+  }, [id]);
+
   // ── Log append helper ──
   const appendLog = useCallback(
     (text: string, kind: LogEntry["kind"] = "log") => {

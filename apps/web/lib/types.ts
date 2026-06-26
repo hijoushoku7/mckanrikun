@@ -15,6 +15,7 @@ export type ServerStatus =
   | "running"
   | "stopped"
   | "starting"
+  | "stopping"
   | "error"
   | "unknown";
 
