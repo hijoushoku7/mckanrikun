@@ -7,6 +7,7 @@ export function statusColor(s: ServerStatus): string {
     case "running":
       return "var(--color-success)";
     case "starting":
+    case "stopping":
       return "var(--color-warning)";
     case "error":
       return "var(--color-danger)";
@@ -22,6 +23,7 @@ export function statusBg(s: ServerStatus): string {
     case "running":
       return "#1a3a20";
     case "starting":
+    case "stopping":
       return "#3a2e10";
     case "error":
       return "#3a1a1a";
